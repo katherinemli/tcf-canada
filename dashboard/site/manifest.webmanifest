@@ -1,0 +1,17 @@
+{
+  "name": "TCF Canada — Expression orale",
+  "short_name": "TCF Oral",
+  "description": "S'entraîner à l'épreuve orale du TCF Canada : sujets, chronos et enregistrement de sa voix.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

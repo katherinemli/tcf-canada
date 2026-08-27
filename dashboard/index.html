@@ -1,0 +1,2481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur TCF — Expression écrite</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bleu: #2563eb;
+    --bleu-clair: #eff6ff;
+    --bleu-vif: #3b82f6;
+    --orange: #f59e0b;
+    --gris-fond: #f8fafc;
+    --gris-bord: #e2e8f0;
+    --texte: #1e293b;
+    --texte-doux: #64748b;
+  }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--gris-fond);
+    color: var(--texte);
+    height: 100vh;
+    overflow: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ---------- En-tête ---------- */
+  .entete {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid var(--gris-bord);
+    padding: 12px 24px;
+    height: 72px;
+  }
+  .entete-gauche { display: flex; align-items: center; gap: 16px; }
+  .btn-retour {
+    background: none; border: none; font-size: 22px; color: var(--texte);
+    padding: 6px 10px; border-radius: 8px;
+  }
+  .btn-retour:hover { background: var(--gris-fond); }
+  .entete-titre { font-weight: 700; font-size: 17px; }
+  .entete-sous { font-size: 13px; color: var(--texte-doux); }
+  .chrono {
+    display: flex; align-items: center; gap: 10px;
+    border: 2px solid #bfdbfe; background: var(--bleu-clair);
+    border-radius: 999px; padding: 8px 22px;
+    font-family: "SF Mono", "Cascadia Mono", monospace;
+    font-size: 24px; font-weight: 700;
+  }
+  .chrono.urgent { border-color: #fca5a5; background: #fef2f2; color: #dc2626; }
+
+  /* ---------- Disposition ---------- */
+  .disposition {
+    display: grid;
+    grid-template-columns: 290px 1fr 310px;
+    height: calc(100vh - 72px);
+  }
+  .panneau {
+    background: #fff; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column;
+  }
+  .panneau-gauche { border-right: 1px solid var(--gris-bord); }
+  .panneau-droit { border-left: 1px solid var(--gris-bord); }
+  .panneau-titre {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 16px; margin-bottom: 18px;
+  }
+
+  /* ---------- Cartes de tâches ---------- */
+  .carte-tache {
+    border: 1px solid var(--gris-bord); border-radius: 14px;
+    padding: 16px; margin-bottom: 12px; cursor: pointer;
+    background: #fff; transition: box-shadow .15s;
+  }
+  .carte-tache:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .carte-tache h3 { font-size: 15px; margin-bottom: 4px; }
+  .carte-tache p { font-size: 12.5px; color: var(--texte-doux); margin-bottom: 10px; }
+  .carte-tache.active {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-color: var(--bleu); color: #fff;
+  }
+  .carte-tache.active p { color: #dbeafe; }
+  .barre { height: 5px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+  .carte-tache.active .barre { background: rgba(255,255,255,.3); }
+  .barre > div { height: 100%; background: var(--bleu-vif); border-radius: 99px; transition: width .2s; }
+  .carte-tache.active .barre > div { background: #fff; }
+
+  .avertissement {
+    margin-top: auto; font-size: 12.5px; line-height: 1.45;
+    border-radius: 12px; padding: 12px 14px; display: flex; gap: 8px;
+  }
+  .avertissement.orange { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .avertissement.info { color: var(--texte-doux); margin-top: 10px; }
+
+  /* ---------- Zone centrale ---------- */
+  .centre { display: flex; flex-direction: column; overflow: hidden; }
+  .centre-defile { flex: 1; overflow-y: auto; padding: 28px 40px; }
+  .tache-entete { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  .badge-num {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px;
+  }
+  .tache-entete h2 { font-size: 20px; }
+  .tache-entete .mots-reco { font-size: 13.5px; color: var(--texte-doux); }
+  .btn-masquer {
+    margin-left: auto; display: flex; align-items: center; gap: 6px;
+    background: var(--gris-fond); border: 1px solid var(--gris-bord);
+    border-radius: 10px; padding: 8px 14px; font-size: 13.5px;
+  }
+  .btn-masquer:hover { background: #eef2f7; }
+  .description { font-size: 14.5px; color: #475569; margin-bottom: 16px; line-height: 1.5; }
+  .sujet {
+    background: var(--bleu-clair); border: 1px solid #dbeafe;
+    border-radius: 14px; padding: 18px 22px; font-size: 15.5px;
+    font-weight: 500; line-height: 1.55; margin-bottom: 16px;
+  }
+  .documents { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .document {
+    background: var(--gris-fond); border: 1px solid var(--gris-bord);
+    border-radius: 14px; padding: 18px 20px; font-size: 14px; line-height: 1.6;
+  }
+  .zone-texte {
+    width: 100%; min-height: 340px; resize: vertical;
+    border: 1px solid var(--gris-bord); border-radius: 14px;
+    padding: 18px 20px; font-size: 15.5px; line-height: 1.6;
+    font-family: inherit; background: #fff; margin-top: 12px;
+  }
+  .zone-texte:focus { outline: 2px solid var(--bleu-vif); border-color: transparent; }
+  .zone-texte:disabled { background: #f8fafc; color: #94a3b8; }
+
+  /* --- Mode extrême : bouton, badge et tâches verrouillées --- */
+  .btn-commencer.extreme { background: #dc2626; }
+  .badge-mode {
+    font-size: 11.5px; font-weight: 600; border-radius: 99px;
+    padding: 3px 10px; background: #fee2e2; color: #b91c1c; margin-left: 8px;
+  }
+  .carte-tache.verrouillee { opacity: .5; cursor: not-allowed; }
+  .carte-tache.verrouillee.active { opacity: .75; }
+  .tache-fermee {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    text-align: center; margin-top: 12px; padding: 40px 24px;
+    border: 1px dashed #fca5a5; border-radius: 14px;
+    background: #fef2f2; color: #b91c1c;
+  }
+  .tache-fermee .grand { font-size: 34px; }
+  .tache-fermee h3 { font-size: 16px; }
+  .tache-fermee p { font-size: 13.5px; color: #7f1d1d; max-width: 420px; line-height: 1.6; }
+
+  .barre-bas {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border-top: 1px solid var(--gris-bord);
+    padding: 14px 40px;
+  }
+  .compteur {
+    min-width: 42px; height: 42px; padding: 0 10px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; background: #fffbeb; color: var(--orange);
+  }
+  .compteur.ok { background: #ecfdf5; color: #059669; }
+  .barre-bas .plage { font-size: 15px; color: var(--texte-doux); }
+  .barre-bas .barre { width: 130px; }
+  .barre-bas .nav { margin-left: auto; display: flex; gap: 8px; }
+  .btn-nav {
+    border: 1px solid var(--gris-bord); background: #fff; border-radius: 10px;
+    padding: 10px 16px; font-size: 15px;
+  }
+  .btn-nav.plein { background: var(--bleu); border-color: var(--bleu); color: #fff; font-weight: 600; }
+  .btn-nav:disabled { opacity: .4; cursor: default; }
+
+  /* ---------- Panneau droit ---------- */
+  .grille-caracteres { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+  .btn-car {
+    width: 42px; height: 38px; border: 1px solid var(--gris-bord);
+    background: var(--gris-fond); border-radius: 10px; font-size: 16px;
+  }
+  .btn-car:hover { background: var(--bleu-clair); border-color: #bfdbfe; }
+  .sous-titre { font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+  .prog-ligne { margin-bottom: 14px; }
+  .prog-ligne .haut {
+    display: flex; justify-content: space-between;
+    font-size: 13.5px; margin-bottom: 6px;
+  }
+  .prog-ligne .compte { color: var(--orange); font-weight: 600; }
+  .prog-ligne .compte.ok { color: #059669; }
+  .btn-terminer {
+    margin-top: auto; background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff; border: none; border-radius: 12px; padding: 14px;
+    font-size: 15.5px; font-weight: 700;
+  }
+  .btn-terminer:hover { filter: brightness(1.05); }
+  .btn-annuler {
+    margin-top: 10px; background: #fff; color: #dc2626;
+    border: 1px solid #fca5a5; border-radius: 12px; padding: 11px;
+    font-size: 14px; font-weight: 600; width: 100%;
+  }
+  .btn-annuler:hover { background: #fef2f2; }
+
+  /* ---------- Fenêtre de choix « Annuler » ---------- */
+  .fond-modale {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 50;
+  }
+  .modale {
+    background: #fff; border-radius: 16px; padding: 26px;
+    width: min(420px, 100%); box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  }
+  .modale h3 { font-size: 18px; margin-bottom: 8px; }
+  .modale p { font-size: 14px; color: var(--texte-doux); margin-bottom: 20px; }
+  .modale button {
+    display: block; width: 100%; margin-bottom: 10px; padding: 13px;
+    border-radius: 12px; font-size: 14.5px; font-weight: 600; text-align: left;
+    border: 1px solid var(--gris-bord); background: #fff;
+  }
+  .modale button:hover { background: var(--gris-fond); }
+  .modale button small { display: block; font-weight: 400; color: var(--texte-doux); margin-top: 3px; }
+  .modale .danger { color: #dc2626; border-color: #fca5a5; }
+  .modale .danger:hover { background: #fef2f2; }
+
+  /* ---------- Accueil & résultats ---------- */
+  .page-simple {
+    height: calc(100vh - 0px); overflow-y: auto;
+    display: flex; flex-direction: column; align-items: center; padding: 60px 20px;
+  }
+  .page-simple h1 { font-size: 26px; margin-bottom: 6px; }
+  .page-simple .sous { color: var(--texte-doux); margin-bottom: 34px; }
+  .carte-combi {
+    background: #fff; border: 1px solid var(--gris-bord);
+    box-shadow: 0 1px 3px rgba(15,23,42,.06);
+    border-radius: 14px; padding: 22px 26px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .carte-combi .infos { flex: 1 1 180px; min-width: 180px; }
+  .carte-combi .infos h3, .carte-combi .infos p { white-space: nowrap; }
+  /* Les boutons gardent leur largeur : sinon une carte « terminé » (4 boutons)
+     comprime tout et le texte passe à la ligne. */
+  .carte-combi > :not(.infos) { flex: 0 0 auto; white-space: nowrap; }
+  .carte-combi h3 { font-size: 17px; }
+  .carte-combi p { font-size: 13.5px; color: var(--texte-doux); }
+  .badge-encours {
+    font-size: 12px; font-weight: 600; color: var(--bleu);
+    background: var(--bleu-clair); border-radius: 99px; padding: 4px 10px;
+  }
+  .btn-commencer {
+    background: var(--bleu); color: #fff; border: none;
+    border-radius: 10px; padding: 11px 20px; font-size: 14.5px; font-weight: 600;
+  }
+  .btn-discret { background: none; border: none; color: var(--texte-doux); font-size: 13px; text-decoration: underline; }
+  /* Titre d'une section de l'accueil (« Mes réponses »). */
+  .titre-section {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 17px; font-weight: 700; margin: 30px 4px 14px;
+  }
+  .titre-section .compte { font-weight: 400; color: var(--texte-doux); font-size: 14px; }
+  /* Note obtenue, en petit, sur une carte de l'accueil. */
+  .badge-note {
+    font-size: 13px; font-weight: 700; border-radius: 99px; padding: 5px 12px;
+    background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626;
+  }
+  .badge-note.ambre { background: #fffbeb; border-color: #fde68a; color: #d97706; }
+  .badge-note.vert { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
+  .resultat-tache {
+    width: min(760px, 100%); background: #fff; border: 1px solid var(--gris-bord);
+    border-radius: 16px; padding: 24px 28px; margin-bottom: 16px;
+  }
+  .resultat-tache .haut { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .resultat-tache .texte {
+    white-space: pre-wrap; background: var(--gris-fond);
+    border-radius: 12px; padding: 16px 18px; font-size: 15px; line-height: 1.6;
+  }
+  .resultat-tache .vide { color: #dc2626; font-weight: 600; }
+  .btn-eval {
+    background: linear-gradient(135deg, #10b981, #059669); color: #fff;
+    border: none; border-radius: 10px; padding: 11px 20px;
+    font-size: 14.5px; font-weight: 700;
+  }
+  .btn-eval:hover { filter: brightness(1.05); }
+  .btn-eval:disabled { opacity: .7; cursor: default; }
+  .eval-attente {
+    width: min(760px, 100%); margin-top: 16px; padding: 16px 18px;
+    background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px;
+    color: #065f46; font-size: 15px;
+  }
+  .eval-bloc {
+    width: min(760px, 100%); margin-top: 16px; padding: 20px 22px;
+    background: #fff; border: 1px solid var(--gris-bord); border-radius: 14px;
+    white-space: pre-wrap; font-size: 15px; line-height: 1.6;
+  }
+  .eval-erreur {
+    width: min(760px, 100%); margin-top: 16px; padding: 16px 18px;
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+    color: #92400e; font-size: 15px; white-space: pre-wrap;
+  }
+
+  /* ============================================================
+     Style « bulletin » — commun à l'accueil et aux résultats.
+     ============================================================ */
+  .bandeau {
+    background: var(--bleu); color: #fff; text-align: center;
+    padding: 34px 20px 46px; width: 100%;
+  }
+  .bandeau h1 { font-size: 27px; font-weight: 700; margin-bottom: 8px; }
+  .bandeau .sous-bandeau { font-size: 13.5px; color: #bfdbfe; }
+  /* Les cartes remontent sur le bandeau, comme dans le bulletin. */
+  .page-bulletin {
+    height: 100vh; overflow-y: auto; background: var(--gris-fond);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .colonne { width: min(1100px, 100%); padding: 0 20px 60px; }
+  .colonne.chevauche { margin-top: -30px; }
+  .carte {
+    background: #fff; border: 1px solid var(--gris-bord); border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.06); padding: 26px 30px; margin-bottom: 18px;
+  }
+
+  /* --- Bandeau de statistiques (score / niveau / temps) --- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .stats > div { text-align: center; padding: 4px 12px; }
+  .stats > div + div { border-left: 1px solid var(--gris-bord); }
+  .stats .etiquette { font-size: 13px; color: var(--texte-doux); margin-bottom: 8px; }
+  .stats .valeur { font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .stats .apres { font-size: 12.5px; color: var(--texte-doux); margin-top: 6px; }
+  .rouge { color: #dc2626; } .ambre { color: #d97706; } .vert { color: #059669; }
+  .pastille-niveau {
+    display: inline-block; font-size: 22px; font-weight: 700;
+    border-radius: 10px; padding: 5px 16px;
+    background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626;
+  }
+  .pastille-niveau.ambre { background: #fffbeb; border-color: #fde68a; color: #d97706; }
+  .pastille-niveau.vert { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
+
+  /* --- En-tête d'une tâche notée --- */
+  .tache-titre { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .tache-titre h3 { font-size: 17px; flex: 1; }
+  .tache-titre .note { font-size: 19px; font-weight: 700; }
+  .pastille {
+    font-size: 11.5px; font-weight: 600; border-radius: 99px; padding: 3px 9px;
+    background: #fffbeb; border: 1px solid #fde68a; color: #b45309;
+  }
+  .consigne-rappel { font-size: 13px; color: var(--texte-doux); margin-bottom: 18px; line-height: 1.5; }
+
+  /* --- Panneaux vert / orange --- */
+  .deux-panneaux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .panneau-avis { border-radius: 12px; padding: 16px 18px; }
+  .panneau-avis h4 {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 13.5px; font-weight: 700; margin-bottom: 12px;
+  }
+  .panneau-avis li {
+    list-style: none; position: relative; padding-left: 14px;
+    font-size: 12.8px; line-height: 1.5; margin-bottom: 9px; color: #334155;
+  }
+  .panneau-avis li::before {
+    content: ""; position: absolute; left: 0; top: 6px;
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .positif { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .positif h4 { color: #16a34a; }
+  .positif li::before { background: #22c55e; }
+  .ameliorer { background: #fffbeb; border: 1px solid #fde68a; }
+  .ameliorer h4 { color: #d97706; }
+  .ameliorer li::before { background: #f59e0b; }
+
+  /* --- Sections repliables (ta réponse / la correction) --- */
+  .repliable { border: 1px solid var(--gris-bord); border-radius: 12px; margin-top: 16px; }
+  .repliable > summary {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 13px 16px; font-size: 13.5px; font-weight: 600; color: var(--bleu);
+    list-style: none;
+  }
+  .repliable > summary::-webkit-details-marker { display: none; }
+  .repliable > summary::after { content: "⌄"; margin-left: auto; color: var(--texte-doux); font-size: 15px; }
+  .repliable[open] > summary::after { content: "⌃"; }
+  .repliable > summary .compte-mots { font-weight: 400; color: var(--texte-doux); }
+  .repliable .contenu {
+    margin: 0 16px 16px; padding: 16px 18px; white-space: pre-wrap;
+    border: 1px solid var(--gris-bord); border-radius: 10px;
+    font-size: 13.5px; line-height: 1.7; color: #334155;
+  }
+  .repliable .contenu.correction { background: #f0fdf4; border-color: #bbf7d0; }
+
+  /* ============================================================
+     EXPRESSION ORALE
+     Le violet distingue l'oral de l'écrit (bleu) d'un coup d'œil.
+     ============================================================ */
+  :root { --violet: #7c3aed; --violet-clair: #f5f3ff; --rouge: #dc2626; }
+
+  /* --- Onglets Écrit / Oral sur l'accueil --- */
+  .onglets {
+    display: inline-flex; gap: 6px; background: rgba(255,255,255,.15);
+    border-radius: 999px; padding: 5px; margin-top: 18px;
+  }
+  .onglet {
+    border: none; background: none; color: #dbeafe; border-radius: 999px;
+    padding: 9px 26px; font-size: 14.5px; font-weight: 600;
+  }
+  .onglet.actif { background: #fff; color: var(--bleu); }
+  .bandeau.oral { background: var(--violet); }
+  .bandeau.oral .sous-bandeau { color: #ddd6fe; }
+  .bandeau.oral .onglet { color: #ddd6fe; }
+  .bandeau.oral .onglet.actif { background: #fff; color: var(--violet); }
+  .btn-oral { background: var(--violet); color: #fff; border: none;
+    border-radius: 10px; padding: 11px 20px; font-size: 14.5px; font-weight: 600; }
+  .btn-oral:hover { filter: brightness(1.08); }
+
+  /* --- Bandeau micro (Bluetooth / autorisation) --- */
+  .bandeau-micro {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;
+    font-size: 14px; line-height: 1.5;
+  }
+  .bandeau-micro.alerte { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .bandeau-micro.ok { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+  .bandeau-micro .grandir { flex: 1 1 260px; }
+  .bandeau-micro select {
+    font-family: inherit; font-size: 13.5px; padding: 8px 10px;
+    border: 1px solid var(--gris-bord); border-radius: 9px; background: #fff;
+    max-width: 100%;
+  }
+
+  /* --- Scène d'examen oral --- */
+  .oral-scene {
+    width: min(760px, 100%); display: flex; flex-direction: column;
+    align-items: center; gap: 20px;
+  }
+  .etape-oral { display: flex; gap: 8px; justify-content: center; margin-bottom: 4px; }
+  .etape-oral > div {
+    width: 44px; height: 6px; border-radius: 99px; background: var(--gris-bord);
+  }
+  .etape-oral > div.faite { background: var(--violet); }
+  .etape-oral > div.encours { background: var(--violet); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .pastille-etat {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 999px; padding: 7px 18px; font-size: 13.5px; font-weight: 700;
+  }
+  .pastille-etat.prep { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .pastille-etat.rec { background: #fef2f2; color: var(--rouge); border: 1px solid #fca5a5; }
+  .pastille-etat.rec .point {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--rouge);
+    animation: pulse 1s infinite;
+  }
+
+  /* Chrono circulaire : l'anneau se vide au fil du temps. */
+  .anneau { position: relative; width: 210px; height: 210px; }
+  .anneau svg { transform: rotate(-90deg); }
+  .anneau circle { fill: none; stroke-width: 12; stroke-linecap: round; }
+  .anneau .fond { stroke: var(--gris-bord); }
+  .anneau .trait { stroke: var(--violet); transition: stroke-dashoffset .95s linear; }
+  .anneau.urgent .trait { stroke: var(--rouge); }
+  .anneau .milieu {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 2px;
+  }
+  .anneau .temps {
+    font-family: "SF Mono", "Cascadia Mono", monospace;
+    font-size: 42px; font-weight: 700; line-height: 1;
+  }
+  .anneau.urgent .temps { color: var(--rouge); }
+  .anneau .quoi { font-size: 12.5px; color: var(--texte-doux); }
+
+  /* Vumètre : la preuve visible que le micro capte vraiment. */
+  .vumetre { display: flex; align-items: flex-end; gap: 4px; height: 42px; }
+  .vumetre > div {
+    width: 7px; border-radius: 99px; background: var(--gris-bord);
+    transition: height .08s linear, background .08s linear;
+  }
+  .vumetre > div.on { background: #22c55e; }
+  .vumetre > div.fort { background: var(--orange); }
+  .aide-micro { font-size: 12.5px; color: var(--texte-doux); text-align: center; }
+
+  .btn-rond {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: none; border-radius: 999px; padding: 16px 34px;
+    font-size: 16.5px; font-weight: 700; color: #fff;
+    background: var(--violet); box-shadow: 0 4px 14px rgba(124,58,237,.35);
+  }
+  .btn-rond:hover { filter: brightness(1.08); }
+  .btn-rond.stop { background: var(--rouge); box-shadow: 0 4px 14px rgba(220,38,38,.35); }
+  .btn-rond:disabled { background: #cbd5e1; box-shadow: none; cursor: default; }
+
+  .sujet-oral {
+    background: var(--violet-clair); border: 1px solid #ddd6fe;
+    border-radius: 14px; padding: 20px 24px; font-size: 16px;
+    font-weight: 500; line-height: 1.6; width: 100%;
+  }
+  .points-oral { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; }
+  .point-oral {
+    background: var(--gris-fond); border: 1px solid var(--gris-bord);
+    border-radius: 12px; padding: 14px 12px; text-align: center;
+  }
+  .point-oral .num {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--violet);
+    color: #fff; font-size: 13px; font-weight: 700; margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .point-oral h4 { font-size: 13.5px; margin-bottom: 3px; }
+  .point-oral p { font-size: 11.5px; color: var(--texte-doux); line-height: 1.4; }
+
+  .notes-oral {
+    width: 100%; min-height: 150px; resize: vertical;
+    border: 1px solid var(--gris-bord); border-radius: 14px;
+    padding: 16px 18px; font-size: 15px; line-height: 1.6; font-family: inherit;
+  }
+  .notes-oral:focus { outline: 2px solid var(--violet); border-color: transparent; }
+
+  .liste-aide { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 16px 18px; }
+  .liste-aide li {
+    list-style: none; font-size: 13.5px; line-height: 1.6; color: #78350f;
+    padding-left: 16px; position: relative; margin-bottom: 7px;
+  }
+  .liste-aide li::before { content: "›"; position: absolute; left: 3px; font-weight: 700; }
+
+  /* --- Lecteur : réécouter son enregistrement --- */
+  .carte-audio {
+    background: #fff; border: 1px solid var(--gris-bord); border-radius: 14px;
+    padding: 18px 20px; width: 100%;
+  }
+  .carte-audio .haut {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .carte-audio .haut h4 { font-size: 15px; flex: 1; }
+  .carte-audio audio { width: 100%; margin-bottom: 12px; }
+  .pastille-violette {
+    font-size: 11.5px; font-weight: 600; border-radius: 99px; padding: 3px 10px;
+    background: var(--violet-clair); border: 1px solid #ddd6fe; color: #6d28d9;
+  }
+  .transcription {
+    background: var(--gris-fond); border: 1px solid var(--gris-bord);
+    border-radius: 10px; padding: 14px 16px; font-size: 14px; line-height: 1.7;
+    white-space: pre-wrap; color: #334155;
+  }
+  .transcription.vide { color: var(--texte-doux); font-style: italic; }
+
+  @media (max-width: 700px) {
+    .deux-panneaux, .documents { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr; gap: 20px; }
+    .stats > div + div { border-left: none; border-top: 1px solid var(--gris-bord); padding-top: 18px; }
+    .points-oral { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= ACCUEIL ================= -->
+  <div v-if="vue === 'accueil'" class="page-bulletin">
+    <div class="bandeau" :class="{ oral: onglet === 'oral' }">
+      <h1>Simulateur TCF — Expression {{ onglet === 'oral' ? 'orale' : 'écrite' }}</h1>
+      <p class="sous-bandeau">Choisis une combinaison pour commencer. Bonne chance ! 🍀</p>
+      <div class="onglets">
+        <button class="onglet" :class="{ actif: onglet === 'ecrit' }" @click="onglet = 'ecrit'">
+          ✍️ Écrit
+        </button>
+        <button class="onglet" :class="{ actif: onglet === 'oral' }" @click="ouvrirOngletOral">
+          🎙️ Oral
+        </button>
+      </div>
+    </div>
+
+    <!-- ---------- Onglet ORAL ---------- -->
+    <div v-if="onglet === 'oral'" class="colonne chevauche">
+      <!-- Sans serveur (double-clic sur le fichier), le navigateur refuse le
+           micro : autant le dire tout de suite plutôt que de la laisser
+           cliquer sur un bouton qui ne marchera pas. -->
+      <div v-if="!serveurPresent" class="bandeau-micro alerte">
+        <span>⚠️</span>
+        <span class="grandir">Le micro ne marche que par <strong>http://localhost:8777</strong>.
+          Si tu as ouvert le fichier par double-clic, le navigateur bloque
+          l'enregistrement. Ouvre plutôt l'adresse ci-dessus.</span>
+      </div>
+      <div v-else-if="micro.bluetooth && !micro.micro" class="bandeau-micro alerte">
+        <span>🎧</span>
+        <span class="grandir">Ton casque Bluetooth est en mode <strong>musique</strong> :
+          son micro n'existe pas encore. Passe-le en mode micro avant de commencer
+          (le son sera moins beau — c'est normal, c'est le Bluetooth).</span>
+        <button class="btn-oral" @click="basculerMicro('micro')" :disabled="microEnCours">
+          {{ microEnCours ? '⏳…' : '🎙️ Activer le micro du casque' }}
+        </button>
+      </div>
+      <div v-else-if="micro.bluetooth && micro.micro" class="bandeau-micro ok">
+        <span>✅</span>
+        <span class="grandir">Micro du casque Bluetooth <strong>actif</strong>.
+          Pense à revenir en mode musique après, pour retrouver le beau son.</span>
+        <button class="btn-nav" @click="basculerMicro('musique')" :disabled="microEnCours">
+          🎵 Revenir en mode musique
+        </button>
+      </div>
+
+      <div v-for="c in combinaisonsOral" :key="c.id" class="carte-combi">
+        <div class="infos">
+          <h3>{{ c.titre }}</h3>
+          <p>{{ c.sousTitre }} · {{ dureeOralTexte(c) }}</p>
+        </div>
+        <span v-if="nbEnregistrements(c) === 3" class="badge-encours">terminé</span>
+        <span v-else-if="nbEnregistrements(c)" class="badge-encours">
+          {{ nbEnregistrements(c) }}/3 enregistrée{{ nbEnregistrements(c) > 1 ? 's' : '' }}
+        </span>
+        <button v-if="nbEnregistrements(c)" class="btn-nav" @click="voirResultatOral(c)">
+          🎧 Mes enregistrements
+        </button>
+        <button class="btn-oral" @click="commencerOral(c)">
+          {{ nbEnregistrements(c) ? '🔁 Refaire' : '🎙️ Commencer' }}
+        </button>
+      </div>
+
+      <div class="carte" style="margin-top: 8px;">
+        <div class="tache-titre"><h3>💡 Comment ça marche</h3></div>
+        <p style="font-size: 14px; line-height: 1.7; color: #475569;">
+          L'épreuve dure <strong>12 minutes</strong> et se fait d'une traite :<br>
+          <strong>1.</strong> Présentation personnelle — 2 min, sans préparation.<br>
+          <strong>2.</strong> Interaction — 2 min de préparation, puis 3 min 30 où
+          <em>c'est toi qui poses les questions</em>.<br>
+          <strong>3.</strong> Argumentation — 4 min 30, sans préparation.<br><br>
+          Tout est enregistré dans <code>mes_audios/</code>. Après, tu peux te réécouter,
+          faire écrire ce que tu as dit par Whisper (sur ton ordinateur, gratuitement),
+          et demander une note à Claude.
+        </p>
+      </div>
+    </div>
+
+    <!-- ---------- Onglet ÉCRIT ---------- -->
+    <div v-if="onglet === 'ecrit'" class="colonne chevauche">
+    <div v-for="c in combinaisons" :key="c.id" class="carte-combi">
+      <div class="infos">
+        <h3>{{ c.titre }}</h3>
+        <p>{{ c.sousTitre }} · {{ c.dureeMinutes }} min</p>
+      </div>
+      <span v-if="aSauvegarde(c.id)" class="badge-encours">en cours</span>
+      <span v-else-if="aResultat(c.id)" class="badge-encours">terminé</span>
+      <button v-if="aSauvegarde(c.id)" class="btn-discret" @click="recommencer(c)">recommencer</button>
+      <button v-if="aResultat(c.id)" class="btn-discret" @click="effacerResultat(c)">effacer</button>
+      <button v-if="aResultat(c.id)" class="btn-nav" @click="voirResultat(c)">📄 Mes résultats</button>
+      <button v-if="aSauvegarde(c.id)" class="btn-commencer" @click="commencer(c)">Reprendre</button>
+      <template v-else>
+        <button class="btn-commencer" @click="commencer(c, 'facile')" title="60 min au total, tu navigues librement">
+          🙂 Mode facile
+        </button>
+        <button class="btn-commencer extreme" @click="commencer(c, 'extreme')"
+                title="10 / 20 / 30 min par tâche — la tâche se ferme quand son temps est écoulé">
+          🔥 Mode extrême
+        </button>
+      </template>
+    </div>
+
+    <!-- --- Mes réponses : TOUS les examens terminés, quelle que soit leur
+         origine (fichier de mes_reponses/ OU examen fait dans l'app).
+         Même carte que les combinaisons ci-dessus : on relit son bulletin
+         et on peut refaire l'examen sans remonter dans la liste. -->
+    <template v-if="mesReponses.length">
+      <div class="titre-section">
+        📚 Mes réponses <span class="compte">({{ mesReponses.length }})</span>
+      </div>
+      <div v-for="r in mesReponses" :key="r.cle" class="carte-combi">
+        <div class="infos">
+          <h3>{{ r.titre }}</h3>
+          <p>{{ r.date }}</p>
+        </div>
+        <span v-if="r.noteGlobale != null" class="badge-note" :class="teinte(r.noteGlobale)">
+          {{ noteTexte(r.noteGlobale) }}/20<template v-if="r.niveau"> · {{ r.niveau }}</template>
+        </span>
+        <span v-else class="badge-encours">non évalué</span>
+        <button class="btn-discret" @click="effacerReponse(r)">effacer</button>
+        <button class="btn-nav" @click="ouvrirReponse(r)">📄 Mes résultats</button>
+        <!-- Refaire n'a de sens que si le sujet existe encore dans questions.js. -->
+        <template v-if="r.combi">
+          <button class="btn-commencer" @click="commencer(r.combi, 'facile')"
+                  title="60 min au total, tu navigues librement">🙂 Mode facile</button>
+          <button class="btn-commencer extreme" @click="commencer(r.combi, 'extreme')"
+                  title="10 / 20 / 30 min par tâche — la tâche se ferme quand son temps est écoulé">
+            🔥 Mode extrême
+          </button>
+        </template>
+      </div>
+    </template>
+    </div>
+  </div>
+
+  <!-- ================= EXAMEN ORAL ================= -->
+  <template v-if="vue === 'oral'">
+    <header class="entete">
+      <div class="entete-gauche">
+        <button class="btn-retour" title="Retour à l'accueil" @click="quitterOral">←</button>
+        <div>
+          <div class="entete-titre">{{ combiOral.titre }}</div>
+          <div class="entete-sous">Tâche {{ tacheOral + 1 }} sur 3 — {{ tOral.type }}</div>
+        </div>
+      </div>
+      <div class="etape-oral" style="margin: 0;">
+        <div v-for="i in 3" :key="i"
+             :class="{ faite: i - 1 < tacheOral, encours: i - 1 === tacheOral }"></div>
+      </div>
+      <div></div>
+    </header>
+
+    <div class="page-bulletin" style="height: calc(100vh - 72px); padding: 26px 20px 60px;">
+      <div class="oral-scene">
+
+        <!-- ---------- Avant de commencer ---------- -->
+        <template v-if="phaseOral === 'pret'">
+          <div class="sujet-oral">{{ tOral.sujet }}</div>
+          <p class="description" style="text-align: center;">{{ tOral.description }}</p>
+
+          <div v-if="tOral.points" class="points-oral">
+            <div v-for="(p, i) in tOral.points" :key="i" class="point-oral">
+              <div class="num">{{ i + 1 }}</div>
+              <h4>{{ p.titre }}</h4>
+              <p>{{ p.detail }}</p>
+            </div>
+          </div>
+
+          <!-- Choix du micro + test : mieux vaut s'en apercevoir maintenant
+               qu'après 4 minutes de parole enregistrées dans le vide. -->
+          <div class="bandeau-micro" :class="microPret ? 'ok' : 'alerte'" style="width: 100%;">
+            <span>🎙️</span>
+            <span class="grandir">
+              <template v-if="microPret">Micro prêt — parle, tu dois voir les barres bouger.</template>
+              <template v-else>Autorise le micro pour voir si le son passe.</template>
+            </span>
+            <select v-if="microsDispo.length > 1" v-model="microChoisi" @change="testerMicro">
+              <option v-for="m in microsDispo" :key="m.deviceId" :value="m.deviceId">{{ m.label }}</option>
+            </select>
+            <button v-if="!microPret" class="btn-oral" @click="testerMicro">Tester le micro</button>
+          </div>
+          <div v-if="microPret" class="vumetre">
+            <div v-for="(h, i) in barres" :key="i"
+                 :class="{ on: h > 8, fort: h > 30 }" :style="{ height: h + 'px' }"></div>
+          </div>
+          <p v-if="erreurMicro" class="aide-micro" style="color: var(--rouge);">{{ erreurMicro }}</p>
+
+          <button class="btn-rond" @click="lancerTache">
+            ▶ {{ tOral.prep ? 'Commencer la préparation (' + mmss(tOral.prep) + ')'
+                            : 'Commencer — j\'enregistre tout de suite' }}
+          </button>
+          <p class="aide-micro">
+            <template v-if="tOral.prep">Après la préparation, l'enregistrement démarre tout seul.</template>
+            <template v-else>Durée : {{ mmss(tOral.duree) }}. L'enregistrement s'arrête tout seul à la fin.</template>
+          </p>
+        </template>
+
+        <!-- ---------- Préparation / enregistrement ---------- -->
+        <template v-else-if="phaseOral === 'prep' || phaseOral === 'rec'">
+          <span v-if="phaseOral === 'prep'" class="pastille-etat prep">✍️ Préparation</span>
+          <span v-else class="pastille-etat rec"><span class="point"></span> Enregistrement en cours</span>
+
+          <div class="anneau" :class="{ urgent: chronoOral <= 30 }">
+            <svg width="210" height="210">
+              <circle class="fond" cx="105" cy="105" r="90"></circle>
+              <circle class="trait" cx="105" cy="105" r="90"
+                      :stroke-dasharray="565.49"
+                      :stroke-dashoffset="565.49 * (1 - fractionOral)"></circle>
+            </svg>
+            <div class="milieu">
+              <div class="temps">{{ mmss(chronoOral) }}</div>
+              <div class="quoi">{{ phaseOral === 'prep' ? 'préparation' : 'temps de parole' }}</div>
+            </div>
+          </div>
+
+          <div v-if="phaseOral === 'rec'" class="vumetre">
+            <div v-for="(h, i) in barres" :key="i"
+                 :class="{ on: h > 8, fort: h > 30 }" :style="{ height: h + 'px' }"></div>
+          </div>
+          <p v-if="phaseOral === 'rec' && silence" class="aide-micro" style="color: var(--rouge);">
+            ⚠️ Je n'entends rien — vérifie que le bon micro est choisi.
+          </p>
+
+          <div class="sujet-oral">{{ tOral.sujet }}</div>
+
+          <!-- Les notes restent visibles pendant qu'on parle : c'est ce qui se
+               passe à l'examen, on garde sa feuille de préparation sous les yeux. -->
+          <textarea v-if="phaseOral === 'prep'" class="notes-oral"
+                    v-model="notesOral[tacheOral]"
+                    placeholder="Note ici tes questions ou tes idées… (mots-clés, pas de phrases entières)"></textarea>
+          <div v-else-if="notesOral[tacheOral]" class="carte-audio">
+            <div class="haut"><h4>📝 Mes notes</h4></div>
+            <div class="transcription">{{ notesOral[tacheOral] }}</div>
+          </div>
+
+          <details v-if="tOral.aide && phaseOral === 'prep'" class="repliable" style="width: 100%;">
+            <summary>💡 Aide — phrases utiles (à ne plus ouvrir quand tu seras à l'aise)</summary>
+            <div style="margin: 0 16px 16px;">
+              <ul class="liste-aide"><li v-for="(a, i) in tOral.aide" :key="i">{{ a }}</li></ul>
+            </div>
+          </details>
+
+          <button v-if="phaseOral === 'prep'" class="btn-rond" @click="demarrerEnregistrement">
+            🎙️ Je suis prête — enregistrer maintenant
+          </button>
+          <button v-else class="btn-rond stop" @click="arreterEnregistrement">
+            ⏹ J'ai fini de parler
+          </button>
+        </template>
+
+        <!-- ---------- Après l'enregistrement ---------- -->
+        <template v-else>
+          <span class="pastille-etat" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;">
+            ✅ Tâche {{ tacheOral + 1 }} enregistrée
+          </span>
+
+          <div class="carte-audio">
+            <div class="haut">
+              <h4>🎧 Réécoute-toi</h4>
+              <span class="pastille-violette">{{ mmss(dureeEnregistree) }} parlées</span>
+            </div>
+            <audio v-if="urlEcoute" :src="urlEcoute" controls preload="metadata"></audio>
+            <p v-if="messageAudio" class="aide-micro" style="text-align: left;">{{ messageAudio }}</p>
+          </div>
+
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+            <button class="btn-nav" @click="refaireTache">🔁 Refaire cette tâche</button>
+            <button class="btn-rond" @click="tacheOralSuivante">
+              {{ tacheOral < 2 ? 'Tâche ' + (tacheOral + 2) + ' ›' : '🏁 Voir mes enregistrements' }}
+            </button>
+          </div>
+        </template>
+
+      </div>
+    </div>
+  </template>
+
+  <!-- ================= RÉSULTATS ORAUX ================= -->
+  <div v-if="vue === 'oralResultats'" class="page-bulletin">
+    <div class="bandeau oral">
+      <h1>{{ combiOral.titre }}</h1>
+      <p class="sous-bandeau">🎙️ Réécoute-toi, puis fais corriger ce que tu as dit</p>
+    </div>
+
+    <div class="colonne chevauche">
+      <!-- Résumé : ce que Claude a mis comme note (après évaluation). -->
+      <div class="carte stats">
+        <div>
+          <div class="etiquette">Score moyen</div>
+          <div v-if="bilan && bilan.noteGlobale !== null" class="valeur" :class="teinte(bilan.noteGlobale)">
+            {{ noteTexte(bilan.noteGlobale) }}/20
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+          <div v-if="!bilan" class="apres">pas encore évalué</div>
+        </div>
+        <div>
+          <div class="etiquette">Niveau estimé</div>
+          <div v-if="bilan">
+            <span class="pastille-niveau" :class="teinte(bilan.noteGlobale)">{{ bilan.niveau }}</span>
+            <div class="apres">{{ bilan.nclc }}</div>
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+        </div>
+        <div>
+          <div class="etiquette">Débit moyen</div>
+          <div class="valeur">{{ debitMoyen || "—" }}</div>
+          <div class="apres">mots/min (120-150 = fluide)</div>
+        </div>
+      </div>
+
+      <!-- Une carte par tâche : le son, puis ce que Whisper a compris. -->
+      <div v-for="(t, i) in combiOral.taches" :key="i" class="carte">
+        <div class="tache-titre">
+          <h3>Tâche {{ i + 1 }} : {{ t.type }}</h3>
+          <template v-if="noteDe(i)">
+            <span class="note" :class="teinte(noteDe(i).note)">{{ noteTexte(noteDe(i).note) }}/20</span>
+            <span class="pastille">{{ noteDe(i).niveau }}</span>
+          </template>
+          <span v-if="audioDe(i) && audioDe(i).debit" class="pastille-violette">
+            {{ audioDe(i).debit }} mots/min
+          </span>
+        </div>
+        <p class="consigne-rappel">{{ t.sujet }}</p>
+
+        <template v-if="audioDe(i)">
+          <audio :src="'mes_audios/' + audioDe(i).fichier" controls preload="metadata"
+                 style="width: 100%; margin-bottom: 14px;"></audio>
+
+          <div v-if="noteDe(i)" class="deux-panneaux" style="margin-bottom: 14px;">
+            <div v-if="noteDe(i).positifs.length" class="panneau-avis positif">
+              <h4>✅ Points positifs</h4>
+              <ul><li v-for="(p, k) in noteDe(i).positifs" :key="k">{{ p }}</li></ul>
+            </div>
+            <div v-if="noteDe(i).ameliorations.length" class="panneau-avis ameliorer">
+              <h4>⚠️ Axes d'amélioration</h4>
+              <ul><li v-for="(a, k) in noteDe(i).ameliorations" :key="k">{{ a }}</li></ul>
+            </div>
+          </div>
+
+          <details class="repliable" :open="!!audioDe(i).texte">
+            <summary>
+              ✍️ Ce que j'ai dit
+              <span class="compte-mots" v-if="audioDe(i).mots">({{ audioDe(i).mots }} mots)</span>
+            </summary>
+            <div class="contenu">
+              <div v-if="audioDe(i).texte" class="transcription">{{ audioDe(i).texte }}</div>
+              <div v-else class="transcription vide">
+                Pas encore transcrit — clique sur « Écrire ce que j'ai dit » ci-dessous.
+              </div>
+            </div>
+          </details>
+
+          <details v-if="noteDe(i) && noteDe(i).correction" class="repliable">
+            <summary>✎ Comment le dire mieux</summary>
+            <div class="contenu correction">{{ noteDe(i).correction }}</div>
+          </details>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+            <button class="btn-nav" @click="transcrire(i)" :disabled="transcriEnCours === i">
+              {{ transcriEnCours === i ? '⏳ Whisper écoute…'
+                 : audioDe(i).texte ? '🔁 Refaire la transcription' : '✍️ Écrire ce que j\'ai dit' }}
+            </button>
+            <button v-if="audioDe(i).texte" class="btn-nav" @click="copierTexte(audioDe(i).texte)">
+              📋 Copier
+            </button>
+            <button class="btn-nav" @click="choisirFichier(i)" :disabled="importEnCours !== null"
+                    title="Remplacer par un enregistrement fait ailleurs (téléphone, dictaphone…)">
+              {{ importEnCours === i ? '⏳ Import…' : '📁 Remplacer par un fichier' }}
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <p class="vide" style="font-size: 13.5px; margin-bottom: 12px;">
+            ⚠️ Pas d'enregistrement pour cette tâche.
+          </p>
+          <button class="btn-nav" @click="choisirFichier(i)" :disabled="importEnCours !== null">
+            {{ importEnCours === i ? '⏳ Import…' : '📁 Importer un fichier audio' }}
+          </button>
+        </template>
+      </div>
+
+      <div v-if="bilan && bilan.leviers && bilan.leviers.length" class="carte">
+        <div class="tache-titre"><h3>💡 Pour progresser</h3></div>
+        <div class="panneau-avis ameliorer" style="margin-top: 12px;">
+          <ul><li v-for="(l, k) in bilan.leviers" :key="k">{{ l }}</li></ul>
+        </div>
+      </div>
+
+      <!-- Sert à tous les boutons « importer » : un seul champ pour les 3 tâches. -->
+      <input ref="fichierAudio" type="file" accept="audio/*,.m4a,.3gp,.amr,.opus"
+             style="display: none;" @change="importerFichier">
+
+      <div class="carte">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn-nav" @click="toutTranscrire" :disabled="transcriEnCours !== null">
+            ✍️ Tout transcrire
+          </button>
+          <button class="btn-eval" @click="evaluerOral" :disabled="evalEnCours || !toutTranscrit">
+            {{ evalEnCours ? '⏳ Claude évalue…' : '🤖 Évaluer avec Claude' }}
+          </button>
+          <button class="btn-nav" @click="copierPourIAOral">📋 Copier pour ChatGPT</button>
+          <button class="btn-nav" @click="vue = 'accueil'">Accueil</button>
+          <button class="btn-oral" @click="commencerOral(combiOral)">🔁 Refaire</button>
+        </div>
+        <p v-if="!toutTranscrit" style="margin-top: 12px; font-size: 13.5px; color: var(--texte-doux);">
+          Claude ne peut pas écouter : il faut d'abord transcrire tes enregistrements
+          (« Tout transcrire » — ça se passe sur ton ordinateur, c'est gratuit).
+        </p>
+        <p v-if="messageExport" style="margin-top: 12px; color: #059669; font-size: 14px;">{{ messageExport }}</p>
+      </div>
+
+      <div v-if="evaluationTexte" class="carte" style="white-space: pre-wrap; font-size: 14px; line-height: 1.7;">🤖 <strong>Évaluation de Claude</strong>
+
+{{ evaluationTexte }}</div>
+
+      <div v-if="evalErreur" class="eval-erreur" style="width: 100%;">
+        <p>{{ evalErreur }}</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+          <button class="btn-commencer" @click="copierPourIAOral">📋 Copier pour ChatGPT</button>
+          <a class="btn-nav" href="https://chatgpt.com" target="_blank" rel="noopener"
+             style="text-decoration: none; display: inline-flex; align-items: center;">↗ Ouvrir ChatGPT</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= UNE RÉPONSE ARCHIVÉE ================= -->
+  <div v-if="vue === 'archive'" class="page-bulletin">
+    <div class="bandeau">
+      <h1>{{ archive.titre }}</h1>
+      <p class="sous-bandeau">🕐 Soumis le {{ archive.date || archive.fichier }}</p>
+    </div>
+
+    <div class="colonne chevauche">
+      <!-- Même bandeau de statistiques que la page de résultats. -->
+      <div class="carte stats">
+        <div>
+          <div class="etiquette">Score moyen</div>
+          <div v-if="archive.noteGlobale !== null" class="valeur" :class="teinte(archive.noteGlobale)">
+            {{ noteTexte(archive.noteGlobale) }}/20
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+        </div>
+        <div>
+          <div class="etiquette">Niveau estimé</div>
+          <div v-if="archive.niveau">
+            <span class="pastille-niveau" :class="teinte(archive.noteGlobale)">{{ archive.niveau }}</span>
+            <div class="apres">{{ archive.nclc }}</div>
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+        </div>
+        <div>
+          <div class="etiquette">Temps utilisé</div>
+          <div class="valeur">{{ archive.temps || "—" }}</div>
+        </div>
+      </div>
+
+      <!-- Une carte par tâche, comme après une simulation. -->
+      <div v-for="t in archive.taches" :key="t.numero" class="carte">
+        <div class="tache-titre">
+          <h3>Tâche {{ t.numero }} : {{ t.type }}</h3>
+          <span v-if="t.note !== null" class="note" :class="teinte(t.note)">{{ noteTexte(t.note) }}/20</span>
+          <span v-if="t.niveau" class="pastille">{{ t.niveau }}</span>
+          <span class="pastille">{{ t.mots }} mots</span>
+        </div>
+        <p v-if="t.sujet" class="consigne-rappel">{{ t.sujet }}</p>
+        <details class="repliable" open>
+          <summary>📄 Voir votre réponse <span class="compte-mots">({{ t.mots }} mots)</span></summary>
+          <div class="contenu">{{ t.texte }}</div>
+        </details>
+      </div>
+
+      <div v-if="archive.retour.length" class="carte">
+        <div class="tache-titre"><h3>💡 Pour progresser</h3></div>
+        <!-- Les sections « points forts » passent en vert, le reste en ambre. -->
+        <div v-for="(s, k) in archive.retour" :key="k"
+             class="panneau-avis" :class="estPositif(s.titre) ? 'positif' : 'ameliorer'"
+             style="margin-top: 12px;">
+          <h4 v-if="s.titre">{{ s.titre }}</h4>
+          <ul v-if="s.points.length"><li v-for="(p, j) in s.points" :key="j">{{ p }}</li></ul>
+        </div>
+      </div>
+
+      <div class="carte">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn-nav" @click="vue = 'accueil'">← Accueil</button>
+          <template v-if="combiDe(archive)">
+            <button class="btn-commencer" @click="commencer(combiDe(archive), 'facile')">
+              🙂 Refaire — mode facile
+            </button>
+            <button class="btn-commencer extreme" @click="commencer(combiDe(archive), 'extreme')">
+              🔥 Refaire — mode extrême
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= EXAMEN ================= -->
+  <template v-if="vue === 'examen'">
+    <header class="entete">
+      <div class="entete-gauche">
+        <button class="btn-retour" title="Retour à l'accueil" @click="quitter">←</button>
+        <div>
+          <div class="entete-titre">{{ combinaison.titre }}</div>
+          <div class="entete-sous">{{ combinaison.sousTitre }}</div>
+        </div>
+      </div>
+      <div class="chrono" :class="{ urgent: chronoCourant < 300 }">
+        <span>🕐</span><span>{{ chronoAffiche }}</span>
+        <span v-if="extreme" class="badge-mode">🔥 tâche {{ tacheActive + 1 }}</span>
+      </div>
+      <div></div>
+    </header>
+
+    <div class="disposition">
+      <!-- Navigation gauche -->
+      <aside class="panneau panneau-gauche">
+        <div class="panneau-titre">📄 Navigation</div>
+        <div v-for="(t, i) in combinaison.taches" :key="i"
+             class="carte-tache"
+             :class="{ active: i === tacheActive, verrouillee: bloquees[i] }"
+             @click="allerTache(i)">
+          <h3>Tâche {{ i + 1 }} <span v-if="bloquees[i]">🔒</span>
+            <span v-else-if="extreme" style="float:right; font-size:12.5px;">{{ minutesTache(i) }} min</span>
+          </h3>
+          <p>{{ t.type }} - {{ nbMots(i) }}/{{ t.motsMin }}-{{ t.motsMax }} mots</p>
+          <div class="barre"><div :style="{ width: pctMots(i) + '%' }"></div></div>
+        </div>
+        <div class="avertissement orange">
+          <span>⚠️</span>
+          <span>Le fait de laisser une tâche vide entraîne automatiquement une note
+          globale éliminatoire de 0/20. Pense à bien gérer ton temps et vérifie à
+          la fin que tu as traité les trois tâches.</span>
+        </div>
+        <div class="avertissement info">
+          <span>💡</span>
+          <span v-if="extreme">Mode extrême : chaque tâche a son propre chrono
+          ({{ budgets.map(b => b / 60).join(' / ') }} min). Quand il tombe à zéro, la tâche se
+          ferme — tu ne peux plus ni la lire ni la modifier. Passer à la suivante ferme
+          aussi la tâche en cours.</span>
+          <span v-else>Navigue librement entre les tâches. Gère ton temps comme tu le souhaites.</span>
+        </div>
+      </aside>
+
+      <!-- Centre -->
+      <main class="centre">
+        <div class="centre-defile">
+          <div class="tache-entete">
+            <div class="badge-num">{{ tacheActive + 1 }}</div>
+            <div>
+              <h2>{{ tache.type }}</h2>
+              <div class="mots-reco">{{ tache.motsMin }}-{{ tache.motsMax }} mots recommandés</div>
+            </div>
+            <button v-if="!bloquees[tacheActive]" class="btn-masquer" @click="masquer = !masquer">
+              {{ masquer ? '👁 Afficher' : '🚫 Masquer' }}
+            </button>
+          </div>
+
+          <!-- Tâche fermée : ni le sujet ni le texte ne sont accessibles. -->
+          <div v-if="bloquees[tacheActive]" class="tache-fermee">
+            <div class="grand">🔒</div>
+            <h3>Temps écoulé pour cette tâche</h3>
+            <p>Elle est fermée définitivement : tu ne peux plus lire le sujet ni modifier
+            ta réponse. Ton texte ({{ nbMots(tacheActive) }} mots) est conservé et sera
+            évalué à la fin.</p>
+          </div>
+
+          <template v-else>
+            <template v-if="!masquer">
+              <p class="description">{{ tache.description }}</p>
+              <div class="sujet">{{ tache.sujet }}</div>
+              <div v-if="tache.documents" class="documents">
+                <div v-for="(d, i) in tache.documents" :key="i" class="document">{{ d }}</div>
+              </div>
+            </template>
+
+            <textarea ref="zone" class="zone-texte"
+                      v-model="textes[tacheActive]"
+                      placeholder="Rédige ton texte ici…"
+                      spellcheck="false"></textarea>
+          </template>
+        </div>
+
+        <div class="barre-bas">
+          <div class="compteur" :class="{ ok: nbMots(tacheActive) >= tache.motsMin }">
+            {{ nbMots(tacheActive) }}
+          </div>
+          <span class="plage">/ {{ tache.motsMin }}-{{ tache.motsMax }} mots</span>
+          <div class="barre"><div :style="{ width: pctMots(tacheActive) + '%' }"></div></div>
+          <div class="nav">
+            <button class="btn-nav" :disabled="tacheActive === 0 || extreme"
+                    @click="allerTache(tacheActive - 1)">‹</button>
+            <button class="btn-nav plein" :disabled="tacheActive === 2" @click="allerTache(tacheActive + 1)">
+              {{ extreme ? 'Terminer cette tâche ›' : 'Suivant ›' }}
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Outils droite -->
+      <aside class="panneau panneau-droit">
+        <div class="panneau-titre">⌨️ Outils</div>
+        <div class="sous-titre">Caractères spéciaux</div>
+        <div class="grille-caracteres">
+          <button v-for="c in caracteres" :key="c" class="btn-car"
+                  @mousedown.prevent="inserer(c)">{{ c }}</button>
+        </div>
+        <div class="sous-titre">Progression</div>
+        <div v-for="(t, i) in combinaison.taches" :key="i" class="prog-ligne">
+          <div class="haut">
+            <span>Tâche {{ i + 1 }}</span>
+            <span class="compte" :class="{ ok: nbMots(i) >= t.motsMin }">{{ nbMots(i) }}/{{ t.motsMin }}</span>
+          </div>
+          <div class="barre"><div :style="{ width: pctMots(i) + '%' }"></div></div>
+        </div>
+        <button class="btn-terminer" @click="terminer(false)">Terminer l'examen ✈️</button>
+        <button class="btn-annuler" @click="annuler">✕ Annuler (quitter sans noter)</button>
+      </aside>
+    </div>
+
+    <!-- Choix au moment d'annuler -->
+    <div v-if="modaleAnnuler" class="fond-modale" @click.self="modaleAnnuler = false">
+      <div class="modale">
+        <h3>Quitter sans noter ?</h3>
+        <p>Que veux-tu faire de ce que tu as déjà écrit ?</p>
+        <button @click="modaleAnnuler = false">↩︎ Revenir à l'examen
+          <small>Le chrono continue de tourner.</small>
+        </button>
+        <button @click="quitterEnGardant">💾 Garder pour plus tard
+          <small>Tu pourras reprendre depuis l'accueil.</small>
+        </button>
+        <button class="danger" @click="quitterEnEffacant">🗑️ Tout effacer
+          <small>Tes textes sont supprimés définitivement.</small>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <!-- ================= RÉSULTATS ================= -->
+  <div v-if="vue === 'resultats'" class="page-bulletin">
+    <div class="bandeau">
+      <h1>{{ combinaison.titre }}</h1>
+      <p class="sous-bandeau">🕐 Soumis le {{ dateSoumission }}</p>
+    </div>
+
+    <div class="colonne chevauche">
+      <!-- --- Résumé : score / niveau / temps (rempli après l'évaluation) --- -->
+      <div class="carte stats">
+        <div>
+          <div class="etiquette">Score moyen</div>
+          <div v-if="bilan && bilan.noteGlobale !== null" class="valeur" :class="teinte(bilan.noteGlobale)">
+            {{ noteTexte(bilan.noteGlobale) }}/20
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+          <div v-if="!bilan" class="apres">pas encore évalué</div>
+        </div>
+        <div>
+          <div class="etiquette">Niveau estimé</div>
+          <div v-if="bilan">
+            <span class="pastille-niveau" :class="teinte(bilan.noteGlobale)">{{ bilan.niveau }}</span>
+            <div class="apres">{{ bilan.nclc }}</div>
+          </div>
+          <div v-else class="valeur" style="color: var(--gris-bord);">—</div>
+        </div>
+        <div>
+          <div class="etiquette">Temps utilisé</div>
+          <div class="valeur">{{ tempsUtiliseAffiche }}</div>
+          <div class="apres">sur {{ combinaison.dureeMinutes }}:00</div>
+        </div>
+      </div>
+
+      <!-- --- Une carte par tâche --- -->
+      <div v-for="(t, i) in combinaison.taches" :key="i" class="carte">
+        <div class="tache-titre">
+          <h3>Tâche {{ i + 1 }} : {{ t.type }}</h3>
+          <template v-if="noteDe(i)">
+            <span class="note" :class="teinte(noteDe(i).note)">{{ noteTexte(noteDe(i).note) }}/20</span>
+            <span class="pastille">{{ noteDe(i).niveau }}</span>
+          </template>
+          <span v-else class="pastille">{{ nbMots(i) }} mots</span>
+        </div>
+        <p class="consigne-rappel">{{ t.sujet }}</p>
+
+        <p v-if="!textes[i].trim()" class="vide" style="font-size: 13.5px;">
+          ⚠️ Tâche vide — note éliminatoire 0/20 à l'examen réel !
+        </p>
+
+        <!-- Points positifs / axes d'amélioration -->
+        <div v-if="noteDe(i)" class="deux-panneaux">
+          <div v-if="noteDe(i).positifs.length" class="panneau-avis positif">
+            <h4>✅ Points positifs</h4>
+            <ul><li v-for="(p, k) in noteDe(i).positifs" :key="k">{{ p }}</li></ul>
+          </div>
+          <div v-if="noteDe(i).ameliorations.length" class="panneau-avis ameliorer">
+            <h4>⚠️ Axes d'amélioration</h4>
+            <ul><li v-for="(a, k) in noteDe(i).ameliorations" :key="k">{{ a }}</li></ul>
+          </div>
+        </div>
+
+        <!-- Ta réponse -->
+        <details class="repliable" open>
+          <summary>📄 Voir votre réponse <span class="compte-mots">({{ nbMots(i) }} mots)</span></summary>
+          <div class="contenu">{{ textes[i].trim() || "(vide)" }}</div>
+        </details>
+
+        <!-- Correction proposée -->
+        <details v-if="noteDe(i) && noteDe(i).correction" class="repliable">
+          <summary>✎ Voir la correction proposée</summary>
+          <div class="contenu correction">{{ noteDe(i).correction }}</div>
+        </details>
+
+        <button class="btn-nav" style="margin-top: 14px;" @click="copier(i)">📋 Copier mon texte</button>
+      </div>
+
+      <!-- --- Bilan global --- -->
+      <div v-if="bilan && bilan.leviers && bilan.leviers.length" class="carte">
+        <div class="tache-titre"><h3>💡 Pour progresser</h3></div>
+        <div class="panneau-avis ameliorer" style="margin-top: 12px;">
+          <ul><li v-for="(l, k) in bilan.leviers" :key="k">{{ l }}</li></ul>
+        </div>
+      </div>
+
+      <!-- --- Actions --- -->
+      <div class="carte">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn-eval" @click="evaluerClaude" :disabled="evalEnCours">
+            {{ evalEnCours ? '⏳ Claude évalue… (~30-60 s)' : '🤖 Évaluer avec Claude' }}
+          </button>
+          <button class="btn-nav" @click="copierPourIA">📋 Copier pour ChatGPT / autre IA</button>
+          <button class="btn-nav" @click="telecharger">💾 Télécharger (.txt)</button>
+          <button class="btn-nav" @click="vue = 'accueil'">Accueil</button>
+          <button class="btn-nav" @click="commencer(combinaison)">Refaire</button>
+        </div>
+        <p v-if="messageExport" style="margin-top: 12px; color: #059669; font-size: 14px;">{{ messageExport }}</p>
+      </div>
+
+      <div v-if="evalEnCours" class="eval-attente" style="width: 100%;">
+        ⏳ Claude lit tes trois réponses… patiente ~30 à 60 secondes.
+      </div>
+
+      <!-- Repli : évaluation reçue en texte libre (JSON illisible) -->
+      <div v-if="evaluationTexte" class="carte" style="white-space: pre-wrap; font-size: 14px; line-height: 1.7;">🤖 <strong>Évaluation de Claude</strong>
+
+{{ evaluationTexte }}</div>
+
+      <!-- Secours : Claude indisponible → coller dans ChatGPT -->
+      <div v-if="evalErreur" class="eval-erreur" style="width: 100%;">
+        <p>{{ evalErreur }}</p>
+        <p style="margin-top: 10px;"><strong>Pas de souci — utilise ChatGPT gratuit :</strong></p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+          <button class="btn-commencer" @click="copierPourIA">📋 Copier le texte pour ChatGPT</button>
+          <a class="btn-nav" href="https://chatgpt.com" target="_blank" rel="noopener"
+             style="text-decoration: none; display: inline-flex; align-items: center;">↗ Ouvrir ChatGPT</a>
+        </div>
+        <p style="margin-top: 8px; font-size: 13px; color: var(--texte-doux);">
+          Clique « Copier », ouvre ChatGPT, et colle (Ctrl+V) dans le chat.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="vue.global.prod.js"></script>
+<script src="questions.js"></script>
+<script src="questions_oral.js"></script>
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    return {
+      vue: "accueil",
+      combinaisons: window.QUESTIONS,
+      combinaison: null,
+      tacheActive: 0,
+      textes: ["", "", ""],
+      tempsRestant: 0,
+      timerId: null,
+      // « facile » : 60 min pour l'ensemble, navigation libre (comme le TCF réel).
+      // « extrême » : un chrono par tâche ; à zéro la tâche se ferme pour de bon.
+      mode: "facile",
+      budgets: [10 * 60, 20 * 60, 30 * 60], // secondes allouées à chaque tâche
+      tempsTaches: [0, 0, 0],               // secondes restantes, par tâche
+      bloquees: [false, false, false],
+      masquer: false,
+      messageExport: "",
+      bilan: null,          // évaluation structurée (voir promptEvaluation)
+      evaluationTexte: "",  // repli si la réponse n'est pas du JSON exploitable
+      evalEnCours: false,
+      tempsUtilise: 0,      // secondes réellement passées, figées à la fin
+      dateSoumission: "",
+      evalErreur: "",
+      caracteres: ["é","è","ê","ë","à","â","ù","û","ç","ô","œ","æ","»","«","'"],
+      // Ids des combinaisons ayant une sauvegarde — miroir réactif du localStorage.
+      idsSauvegardes: [],
+      // Ids des combinaisons ayant un examen TERMINÉ archivé (textes + évaluation).
+      idsResultats: [],
+      modaleAnnuler: false,
+      // Examens archivés dans mes_reponses/ (vides si on ouvre le fichier hors serveur).
+      historique: [],
+      archive: null,
+
+      // ---------- Expression orale ----------
+      onglet: "ecrit",                              // « ecrit » ou « oral » sur l'accueil
+      combinaisonsOral: window.QUESTIONS_ORAL || [],
+      combiOral: null,
+      tacheOral: 0,
+      // Où on en est dans la tâche : avant / préparation / on parle / c'est fait.
+      phaseOral: "pret",                            // pret | prep | rec | fini
+      chronoOral: 0,
+      timerOral: null,
+      notesOral: ["", "", ""],                      // brouillon de préparation
+      serveurPresent: false,                        // faux si on a ouvert le fichier par double-clic
+
+      // État du micro et du casque Bluetooth.
+      micro: { bluetooth: false, micro: false },
+      microEnCours: false,
+      microsDispo: [],
+      microChoisi: "",
+      microPret: false,
+      erreurMicro: "",
+      barres: new Array(14).fill(2),                // hauteurs du vumètre
+      silence: false,
+
+      // Objets audio du navigateur (jamais affichés, juste gardés pour pouvoir
+      // les arrêter proprement quand on quitte).
+      flux: null, audioCtx: null, analyseur: null, animId: null,
+      enregistreur: null, morceaux: [],
+      urlEcoute: "", dureeEnregistree: 0, messageAudio: "",
+
+      audios: [],              // enregistrements présents dans mes_audios/
+      transcriEnCours: null,   // index de la tâche en cours de transcription
+      moteurTranscription: "", // « Whisper » ou « AssemblyAI » — rempli par le serveur
+      importCible: null,       // tâche visée par « importer un fichier »
+      importEnCours: null,
+    };
+  },
+  computed: {
+    tache() { return this.combinaison.taches[this.tacheActive]; },
+    extreme() { return this.mode === "extreme"; },
+    // Le chrono affiché : celui de la tâche en cours en extrême, sinon le global.
+    chronoCourant() {
+      return this.extreme ? this.tempsTaches[this.tacheActive] : this.tempsRestant;
+    },
+    chronoAffiche() {
+      const t = Math.max(0, this.chronoCourant);
+      const m = Math.floor(t / 60);
+      const s = t % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    },
+    tempsUtiliseAffiche() { return this.mmss(this.tempsUtilise); },
+    // Tous mes examens terminés, réunis en une seule liste. Ils arrivent par
+    // deux chemins différents et il n'y a aucune raison d'en cacher un :
+    //   • examen fait dans l'app      → localStorage (« tcf-res-<id> ») ;
+    //   • réponse archivée à la main  → fichier mes_reponses/<id>_<date>.md.
+    // Si le même examen existe des deux côtés, on ne le montre qu'une fois et
+    // on ouvre la version locale — c'est déjà ce que fait « Mes résultats »
+    // sur la carte de la combinaison.
+    // Dépend de idsResultats et historique : ce sont eux qui rendent la liste
+    // réactive (localStorage, lu plus bas, ne l'est pas).
+    mesReponses() {
+      const liste = [];
+      this.idsResultats.forEach(id => {
+        const c = this.combinaisons.find(x => x.id === id);
+        if (!c) return;
+        let r;
+        try { r = JSON.parse(localStorage.getItem(this.cleResultat(id))); }
+        catch (e) { return; }
+        if (!r) return;
+        liste.push({
+          cle: "local-" + id,
+          combi: c,
+          titre: c.titre,
+          date: r.dateSoumission || "",
+          noteGlobale: r.bilan ? r.bilan.noteGlobale : null,
+          niveau: r.bilan ? r.bilan.niveau : "",
+          archive: this.archiveDe(id), // fichier jumeau, à effacer en même temps
+          local: true,
+          quand: this.quandDe(r),
+        });
+      });
+      const deja = new Set(liste.map(r => r.combi.id));
+      this.historique.forEach(h => {
+        const c = this.combiDe(h);
+        if (c && deja.has(c.id)) return;
+        liste.push({
+          cle: "fichier-" + h.fichier,
+          combi: c,
+          titre: h.titre,
+          date: h.date || h.fichier,
+          noteGlobale: h.noteGlobale,
+          niveau: h.niveau,
+          archive: h,
+          local: false,
+          quand: (h.modifie || 0) * 1000,
+        });
+      });
+      return liste.sort((a, b) => b.quand - a.quand); // le plus récent d'abord
+    },
+
+    // ---------- Expression orale ----------
+    tOral() { return this.combiOral ? this.combiOral.taches[this.tacheOral] : null; },
+    // Part de temps qu'il reste, pour l'anneau qui se vide.
+    fractionOral() {
+      const total = this.phaseOral === "prep" ? this.tOral.prep : this.tOral.duree;
+      return total > 0 ? Math.max(0, this.chronoOral / total) : 0;
+    },
+    // Claude ne peut pas écouter : sans transcription, pas d'évaluation.
+    toutTranscrit() {
+      if (!this.combiOral) return false;
+      return this.combiOral.taches.every((t, i) => {
+        const a = this.audioDe(i);
+        return a && a.texte;
+      });
+    },
+    debitMoyen() {
+      const debits = this.combiOral
+        ? this.combiOral.taches.map((t, i) => (this.audioDe(i) || {}).debit).filter(Boolean)
+        : [];
+      if (!debits.length) return 0;
+      return Math.round(debits.reduce((s, d) => s + d, 0) / debits.length);
+    },
+  },
+  watch: {
+    textes: { deep: true, handler() { this.sauvegarder(); } },
+  },
+  mounted() {
+    this.rafraichirSauvegardes();
+    this.rafraichirResultats();
+    // La synchro attend l'historique : c'est lui qui dit quels examens ont
+    // déjà leur fichier dans mes_reponses/.
+    this.chargerHistorique().then(() => this.synchroniserFichiers());
+  },
+  methods: {
+    // ----- historique des réponses archivées (dossier mes_reponses/) -----
+    async chargerHistorique() {
+      // Sans le serveur (double-clic sur index.html), l'appel échoue :
+      // on laisse simplement la section masquée.
+      try {
+        const r = await fetch("/historique");
+        const j = await r.json();
+        if (j.ok) { this.historique = j.reponses; this.serveurPresent = true; }
+      } catch (e) { this.serveurPresent = false; }
+    },
+    // ----- archivage sur disque (dossier mes_reponses/) -----
+    // Le navigateur garde l'examen terminé (localStorage) ; le serveur en fait
+    // en plus un fichier .md, lisible même sans ouvrir l'app. Les examens faits
+    // avant cette version n'existaient que dans le navigateur : synchroniserFichiers()
+    // les rattrape au chargement de l'accueil.
+    mmss(secondes) {
+      const t = Math.max(0, Math.round(secondes || 0));
+      return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    },
+    // Le jour de l'examen (AAAA-MM-JJ) pour nommer le fichier. On le lit dans la
+    // date affichée (« 24 juillet 2026 à 13:07 »), sinon dans l'horodatage.
+    jourIso(r) {
+      const mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+                    "août", "septembre", "octobre", "novembre", "décembre"];
+      const m = /(\d{1,2})\s+([^\s\d]+)\s+(\d{4})/.exec(r.dateSoumission || "");
+      const deuxChiffres = n => String(n).padStart(2, "0");
+      if (m) {
+        const i = mois.indexOf(m[2].toLowerCase());
+        if (i !== -1) return `${m[3]}-${deuxChiffres(i + 1)}-${deuxChiffres(+m[1])}`;
+      }
+      const d = r.horodatage ? new Date(r.horodatage) : new Date();
+      return `${d.getFullYear()}-${deuxChiffres(d.getMonth() + 1)}-${deuxChiffres(d.getDate())}`;
+    },
+    // Quand l'examen a été fait, pour trier « Mes réponses ». Les examens
+    // d'avant n'ont pas d'horodatage : on retombe sur leur date affichée.
+    quandDe(r) {
+      if (r.horodatage) return r.horodatage;
+      const t = Date.parse(this.jourIso(r));
+      return Number.isNaN(t) ? 0 : t;
+    },
+    // Ce que le serveur a besoin de savoir pour écrire le fichier .md.
+    ficheDe(c, r) {
+      const textes = r.textes || [];
+      const mots = t => (t || "").trim() ? (t || "").trim().split(/\s+/).length : 0;
+      return {
+        id: c.id,
+        titre: c.titre,
+        date: r.dateSoumission || "",
+        jour: this.jourIso(r),
+        temps: r.tempsUtilise ? this.mmss(r.tempsUtilise) : "",
+        bilan: r.bilan || null,
+        taches: c.taches.map((t, i) => ({
+          numero: i + 1,
+          type: t.type,
+          sujet: t.sujet,
+          mots: mots(textes[i]),
+          texte: textes[i] || "",
+        })),
+      };
+    },
+    // Envoie sans rafraîchir la liste (la synchro le fait une seule fois à la fin).
+    async envoyerFiche(c, r) {
+      try {
+        const rep = await fetch("/enregistrer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this.ficheDe(c, r)),
+        });
+        return (await rep.json()).ok === true;
+      } catch (e) {
+        return false; // hors serveur (double-clic) : l'examen reste dans le navigateur
+      }
+    },
+    async enregistrerFiche(c, r) {
+      if (await this.envoyerFiche(c, r)) await this.chargerHistorique();
+    },
+    // Rattrapage : tout examen terminé dans l'app doit aussi avoir son fichier.
+    async synchroniserFichiers() {
+      let ecrits = 0;
+      for (const id of this.idsResultats) {
+        const c = this.combinaisons.find(x => x.id === id);
+        if (!c || this.archiveDe(id)) continue; // déjà un fichier : rien à faire
+        let r;
+        try { r = JSON.parse(localStorage.getItem(this.cleResultat(id))); }
+        catch (e) { continue; }
+        if (r && await this.envoyerFiche(c, r)) ecrits++;
+      }
+      if (ecrits) await this.chargerHistorique();
+    },
+    estPositif(titre) { return /points? forts?|positif/i.test(titre || ""); },
+    ouvrirArchive(h) {
+      this.archive = h;
+      this.vue = "archive";
+    },
+    // Le sujet d'un fichier archivé (« combinaison-3_2026-07-23.md » → Combinaison 3).
+    // Renvoie null si le sujet n'existe plus dans questions.js : on masque
+    // alors les boutons « refaire », mais la réponse reste lisible.
+    combiDe(h) {
+      return h ? this.combinaisons.find(c => h.fichier.startsWith(c.id + "_")) || null : null;
+    },
+    // Efface le fichier du dossier mes_reponses/, puis rafraîchit la liste.
+    async supprimerFichier(fichier) {
+      try {
+        await fetch("/supprimer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fichier }),
+        });
+      } catch (e) { /* hors ligne : le fichier reste, tant pis */ }
+      await this.chargerHistorique();
+    },
+    // « Mes résultats » depuis la liste : bulletin complet si l'examen a été
+    // fait dans l'app, sinon la fiche lue dans le fichier archivé.
+    ouvrirReponse(r) {
+      if (r.local && r.combi) this.voirResultat(r.combi);
+      else if (r.archive) this.ouvrirArchive(r.archive);
+    },
+    // Effacer depuis « Mes réponses » : le résultat local ET le fichier du
+    // même examen, pour ne pas laisser un « terminé » orphelin sur la carte.
+    async effacerReponse(r) {
+      if (!confirm(`Effacer « ${r.titre} » ?\n\nTes textes et ton évaluation seront perdus.`)) return;
+      if (r.combi) {
+        localStorage.removeItem(this.cleResultat(r.combi.id));
+        this.rafraichirResultats();
+      }
+      if (r.archive) await this.supprimerFichier(r.archive.fichier);
+    },
+    // ----- mots -----
+    nbMots(i) {
+      const t = this.textes[i].trim();
+      return t ? t.split(/\s+/).length : 0;
+    },
+    pctMots(i) {
+      const max = this.combinaison.taches[i].motsMax;
+      return Math.min(100, Math.round((this.nbMots(i) / max) * 100));
+    },
+    // ----- sauvegarde locale -----
+    cle(id) { return "tcf-sim-" + id; },
+    rafraichirSauvegardes() {
+      this.idsSauvegardes = this.combinaisons
+        .filter(c => localStorage.getItem(this.cle(c.id)) !== null)
+        .map(c => c.id);
+    },
+    aSauvegarde(id) { return this.idsSauvegardes.includes(id); },
+    effacerSauvegarde(id) {
+      localStorage.removeItem(this.cle(id));
+      this.rafraichirSauvegardes();
+    },
+    // ----- archive des examens terminés -----
+    // Séparée de la sauvegarde « en cours » : elle survit au retour à l'accueil,
+    // pour pouvoir relire ses textes et son évaluation plus tard.
+    cleResultat(id) { return "tcf-res-" + id; },
+    rafraichirResultats() {
+      this.idsResultats = this.combinaisons
+        .filter(c => localStorage.getItem(this.cleResultat(c.id)) !== null)
+        .map(c => c.id);
+    },
+    // Un examen « terminé » = résultat local (fait dans l'app) OU fichier
+    // archivé dans mes_reponses/ (les deux features réunies).
+    archiveDe(id) {
+      return this.historique.find(h => h.fichier.startsWith(id + "_")) || null;
+    },
+    aResultat(id) {
+      return this.idsResultats.includes(id) || this.archiveDe(id) !== null;
+    },
+    archiverResultat() {
+      if (!this.combinaison) return;
+      const resultat = {
+        textes: this.textes,
+        tempsUtilise: this.tempsUtilise,
+        dateSoumission: this.dateSoumission,
+        bilan: this.bilan,
+        evaluationTexte: this.evaluationTexte,
+        horodatage: Date.now(), // pour trier « Mes réponses » du plus récent au plus ancien
+      };
+      localStorage.setItem(this.cleResultat(this.combinaison.id), JSON.stringify(resultat));
+      this.rafraichirResultats();
+      this.enregistrerFiche(this.combinaison, resultat); // + le fichier dans mes_reponses/
+    },
+    voirResultat(c) {
+      const brut = localStorage.getItem(this.cleResultat(c.id));
+      if (!brut) {
+        // Pas de résultat local : on ouvre le fichier archivé (bulletin).
+        const h = this.archiveDe(c.id);
+        if (h) this.ouvrirArchive(h);
+        return;
+      }
+      let r;
+      try { r = JSON.parse(brut); } catch (e) { return; }
+      this.combinaison = c;
+      this.textes = r.textes || ["", "", ""];
+      this.tempsUtilise = r.tempsUtilise || 0;
+      this.dateSoumission = r.dateSoumission || "";
+      this.bilan = r.bilan || null;
+      this.evaluationTexte = r.evaluationTexte || "";
+      this.evalErreur = "";
+      this.evalEnCours = false;
+      this.messageExport = "";
+      this.vue = "resultats";
+    },
+    async effacerResultat(c) {
+      if (!confirm(`Effacer les résultats de « ${c.titre} » ?\n\nTes textes et ton évaluation seront perdus.`)) return;
+      localStorage.removeItem(this.cleResultat(c.id));
+      this.rafraichirResultats();
+      // Supprime aussi le fichier archivé (mes_reponses/) s'il existe.
+      const h = this.archiveDe(c.id);
+      if (h) await this.supprimerFichier(h.fichier);
+    },
+    recommencer(c) {
+      if (!confirm(`Recommencer « ${c.titre} » ?\n\nTa progression enregistrée sera effacée définitivement.`)) return;
+      this.effacerSauvegarde(c.id);
+    },
+    etatSauvegarde() {
+      return {
+        textes: this.textes,
+        tempsRestant: this.tempsRestant,
+        mode: this.mode,
+        tempsTaches: this.tempsTaches,
+        bloquees: this.bloquees,
+      };
+    },
+    sauvegarder() {
+      if (this.vue !== "examen") return;
+      localStorage.setItem(this.cle(this.combinaison.id), JSON.stringify(this.etatSauvegarde()));
+    },
+    // ----- déroulement -----
+    commencer(c, mode) {
+      this.combinaison = c;
+      const brut = localStorage.getItem(this.cle(c.id));
+      if (brut) {
+        // Reprise : on restitue le mode et l'état des chronos tels quels.
+        const s = JSON.parse(brut);
+        this.textes = s.textes;
+        this.tempsRestant = s.tempsRestant;
+        this.mode = s.mode || "facile";
+        this.tempsTaches = s.tempsTaches || this.budgets.slice();
+        this.bloquees = s.bloquees || [false, false, false];
+        this.tacheActive = this.extreme ? this.premiereOuverte() : 0;
+      } else {
+        this.textes = ["", "", ""];
+        this.tempsRestant = c.dureeMinutes * 60;
+        this.mode = mode || "facile";
+        this.tempsTaches = this.budgets.slice();
+        this.bloquees = [false, false, false];
+        this.tacheActive = 0;
+      }
+      this.masquer = false;
+      this.vue = "examen";
+      clearInterval(this.timerId);
+      this.timerId = setInterval(() => this.tic(), 1000);
+    },
+    // Un battement de seconde : décompte le bon chrono selon le mode.
+    tic() {
+      if (this.extreme) {
+        const i = this.tacheActive;
+        if (this.bloquees[i]) return;
+        this.tempsTaches[i]--;
+        this.sauvegarder();
+        if (this.tempsTaches[i] <= 0) {
+          this.tempsTaches[i] = 0;
+          this.fermerTache(i, true);
+        }
+        return;
+      }
+      this.tempsRestant--;
+      this.sauvegarder();
+      if (this.tempsRestant <= 0) this.terminer(true);
+    },
+    minutesTache(i) { return Math.ceil(this.tempsTaches[i] / 60); },
+    premiereOuverte() {
+      const i = this.bloquees.findIndex(b => !b);
+      return i === -1 ? 0 : i;
+    },
+    // Ferme définitivement une tâche, puis enchaîne (ou termine l'examen).
+    fermerTache(i, auto) {
+      this.bloquees[i] = true;
+      this.sauvegarder();
+      const suivante = this.premiereOuverte();
+      if (this.bloquees.every(b => b)) {
+        if (auto) alert("⏰ Temps écoulé pour la tâche " + (i + 1) + " — examen terminé !");
+        this.terminer(true);
+        return;
+      }
+      if (auto) alert("⏰ Temps écoulé pour la tâche " + (i + 1) + " ! Elle est fermée.");
+      this.tacheActive = suivante;
+      this.masquer = false;
+      this.$nextTick(() => this.$refs.zone && this.$refs.zone.focus());
+    },
+    allerTache(i) {
+      if (this.extreme) {
+        if (this.bloquees[i] || i === this.tacheActive) return;
+        // On n'avance que d'une tâche à la fois, et c'est sans retour.
+        if (i !== this.tacheActive + 1) return;
+        if (!confirm(`Passer à la tâche ${i + 1} ?\n\nLa tâche ${this.tacheActive + 1} sera fermée`
+          + ` définitivement : tu ne pourras plus la relire ni la corriger.`)) return;
+        this.fermerTache(this.tacheActive, false);
+        return;
+      }
+      this.tacheActive = i;
+      this.masquer = false;
+      this.$nextTick(() => this.$refs.zone && this.$refs.zone.focus());
+    },
+    inserer(c) {
+      const zone = this.$refs.zone;
+      if (!zone) return;
+      const debut = zone.selectionStart, fin = zone.selectionEnd;
+      const texte = this.textes[this.tacheActive];
+      this.textes[this.tacheActive] = texte.slice(0, debut) + c + texte.slice(fin);
+      this.$nextTick(() => {
+        zone.focus();
+        zone.selectionStart = zone.selectionEnd = debut + c.length;
+      });
+    },
+    // Vert / ambre / rouge selon la note — même code couleur partout.
+    // Claude renvoie parfois la note en texte (« 8,3/20 », « 8/20 », « 8 sur 20 ») :
+    // on n'en garde que le nombre. Sinon la page affichait « 8,3/20/20 » et la
+    // couleur retombait toujours sur rouge (comparer un texte à 15 donne faux).
+    noteNombre(note) {
+      if (typeof note === "number") return Number.isFinite(note) ? note : null;
+      if (typeof note !== "string") return null;
+      const m = note.replace(",", ".").match(/\d+(\.\d+)?/);
+      return m ? parseFloat(m[0]) : null;
+    },
+    noteTexte(note) {
+      const n = this.noteNombre(note);
+      return n === null ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+    },
+    teinte(note) {
+      const n = this.noteNombre(note);
+      return n === null ? "rouge" : n >= 15 ? "vert" : n >= 10 ? "ambre" : "rouge";
+    },
+    noteDe(i) { return this.bilan && this.bilan.taches ? this.bilan.taches[i] : null; },
+    terminer(auto) {
+      if (!auto && !confirm("Terminer l'examen ?")) return;
+      clearInterval(this.timerId);
+      this.effacerSauvegarde(this.combinaison.id);
+      this.bilan = null;
+      this.evaluationTexte = "";
+      this.evalErreur = "";
+      this.evalEnCours = false;
+      // En extrême, le temps utilisé est la somme des budgets consommés par tâche.
+      this.tempsUtilise = this.extreme
+        ? this.budgets.reduce((somme, b, i) => somme + Math.max(0, b - this.tempsTaches[i]), 0)
+        : Math.max(0, this.combinaison.dureeMinutes * 60 - this.tempsRestant);
+      this.dateSoumission = new Date().toLocaleString("fr-FR", {
+        day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+      });
+      this.vue = "resultats";
+      this.archiverResultat(); // mes textes restent accessibles depuis l'accueil
+      if (auto && !this.extreme) alert("⏰ Le temps est écoulé !"); // en extrême, déjà annoncé par tâche
+    },
+    quitter() {
+      clearInterval(this.timerId);
+      this.sauvegardeForcee();
+      this.vue = "accueil";
+    },
+    annuler() { this.modaleAnnuler = true; },
+    quitterEnGardant() {
+      this.modaleAnnuler = false;
+      this.quitter();
+    },
+    quitterEnEffacant() {
+      if (!confirm("Effacer définitivement tes textes ?\n\nCette action est irréversible.")) return;
+      this.modaleAnnuler = false;
+      clearInterval(this.timerId);
+      this.vue = "accueil"; // avant de vider, sinon le watch relance une sauvegarde
+      this.textes = ["", "", ""];
+      this.effacerSauvegarde(this.combinaison.id);
+    },
+    sauvegardeForcee() {
+      localStorage.setItem(this.cle(this.combinaison.id), JSON.stringify(this.etatSauvegarde()));
+      this.rafraichirSauvegardes();
+    },
+    copier(i) {
+      navigator.clipboard.writeText(this.textes[i]);
+    },
+    // Archive brute de mes réponses (pour garder une trace).
+    texteExport() {
+      const lignes = [`Mon examen TCF — ${this.combinaison.titre}`, ""];
+      this.combinaison.taches.forEach((t, i) => {
+        lignes.push(`=== Tâche ${i + 1} : ${t.type} (${this.nbMots(i)} mots) ===`);
+        lignes.push(`Sujet : ${t.sujet}`);
+        if (t.documents) t.documents.forEach((d, j) => lignes.push(`Document ${j + 1} : ${d}`));
+        lignes.push("");
+        lignes.push("Ma réponse :");
+        lignes.push(this.textes[i].trim() || "(vide)");
+        lignes.push("");
+      });
+      return lignes.join("\n");
+    },
+    // Prompt complet d'évaluation (instructions + réponses) — pour Claude OU ChatGPT.
+    // Réponse attendue en JSON pour pouvoir l'afficher en bulletin ; si le JSON
+    // est illisible, l'app retombe sur un affichage en texte brut.
+    promptEvaluation() {
+      const l = [
+        "Tu es examinateur du TCF Canada (expression écrite). Évalue mes 3 réponses comme à l'examen réel.",
+        "Barème : chaque tâche sur 20 avec un niveau CECR (A1 à C2). Critères : respect de la consigne, structure, grammaire/conjugaison, vocabulaire, cohérence, nombre de mots.",
+        "Ton encourageant mais honnête. Français clair, phrases courtes (je suis de niveau débutant).",
+        "",
+        "Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour et sans balises de code :",
+        JSON.stringify({
+          noteGlobale: "nombre seul, sur 20, sans écrire « /20 » (moyenne des 3 tâches)",
+          niveau: "niveau CECR global, ex: B1",
+          nclc: "équivalence canadienne, ex: NCLC 5",
+          leviers: ["2 conseils prioritaires pour progresser"],
+          taches: [{
+            note: "nombre seul, sur 20, sans écrire « /20 »",
+            niveau: "niveau CECR de cette tâche, ex: B1 avancé",
+            positifs: ["2 à 4 points forts"],
+            ameliorations: ["2 à 4 points concrets, en citant des extraits de mon texte"],
+            correction: "ma réponse réécrite correctement, en gardant mes idées",
+          }],
+        }, null, 2),
+        "Le tableau \"taches\" doit contenir exactement 3 objets, dans l'ordre des tâches.",
+        "",
+        `EXAMEN : ${this.combinaison.titre}`,
+      ];
+      this.combinaison.taches.forEach((t, i) => {
+        l.push("", `--- Tâche ${i + 1} : ${t.type} (${t.motsMin}-${t.motsMax} mots recommandés) ---`);
+        l.push(`Consigne : ${t.sujet}`);
+        if (t.documents) t.documents.forEach((d, j) => l.push(`Document ${j + 1} : ${d}`));
+        l.push(`Ma réponse (${this.nbMots(i)} mots) :`, '"""', this.textes[i].trim() || "(vide)", '"""');
+      });
+      return l.join("\n");
+    },
+    copierPourIA() {
+      navigator.clipboard.writeText(this.promptEvaluation());
+      this.messageExport = "✅ Copié ! Ouvre ChatGPT (ou une autre IA) et colle (Ctrl+V).";
+      setTimeout(() => (this.messageExport = ""), 5000);
+    },
+    // Claude renvoie parfois le JSON entouré de texte ou de ```json — on extrait.
+    lireBilan(texte) {
+      const debut = texte.indexOf("{");
+      const fin = texte.lastIndexOf("}");
+      if (debut === -1 || fin <= debut) return null;
+      let b;
+      try { b = JSON.parse(texte.slice(debut, fin + 1)); }
+      catch (e) { return null; }
+      if (!b || !Array.isArray(b.taches) || !b.taches.length) return null;
+      b.noteGlobale = this.noteNombre(b.noteGlobale);
+      b.taches.forEach(t => {
+        t.note = this.noteNombre(t.note);
+        t.positifs = Array.isArray(t.positifs) ? t.positifs : [];
+        t.ameliorations = Array.isArray(t.ameliorations) ? t.ameliorations : [];
+      });
+      return b;
+    },
+    async evaluerClaude() {
+      this.bilan = null;
+      this.evaluationTexte = "";
+      this.evalErreur = "";
+      this.evalEnCours = true;
+      try {
+        const r = await fetch("/evaluer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: this.promptEvaluation() }),
+        });
+        const j = await r.json();
+        if (!j.ok) {
+          this.evalErreur = j.message;
+        } else {
+          const b = this.lireBilan(j.evaluation);
+          if (b) this.bilan = b;
+          else this.evaluationTexte = j.evaluation; // repli lisible
+        }
+      } catch (e) {
+        this.evalErreur =
+          "Le serveur d'évaluation n'est pas lancé.\n\n" +
+          "Ouvre un terminal dans le dossier tcf_simulateur et tape :\n" +
+          "    python3 serveur_eval.py\n" +
+          "puis ouvre http://localhost:8777 (pas le double-clic).";
+      } finally {
+        this.evalEnCours = false;
+        this.archiverResultat(); // garde aussi l'évaluation reçue
+      }
+    },
+    telecharger() {
+      const blob = new Blob([this.texteExport()], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${this.combinaison.id}_${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      this.messageExport = "✅ Fichier téléchargé (dossier Téléchargements).";
+      setTimeout(() => (this.messageExport = ""), 4000);
+    },
+
+    // ============================================================
+    // EXPRESSION ORALE
+    //
+    // Le navigateur enregistre (MediaRecorder), le serveur pose le son
+    // dans mes_audios/, Whisper écrit ce qui a été dit, Claude corrige.
+    // Chaque étape marche toute seule : si le serveur est éteint, on peut
+    // quand même s'entraîner et se réécouter (mais rien n'est gardé).
+    // ============================================================
+    aujourdhui() {
+      const d = new Date(), z = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+    },
+    dureeOralTexte(c) {
+      const s = c.taches.reduce((t, x) => t + (x.prep || 0) + (x.duree || 0), 0);
+      return Math.round(s / 60) + " min";
+    },
+    // Le format que sait produire CE navigateur (Chrome fait du webm,
+    // Firefox de l'ogg). On garde l'extension qui correspond au contenu,
+    // sinon le lecteur refuse de relire le fichier.
+    formatAudio() {
+      const essais = [
+        ["audio/webm;codecs=opus", "webm"], ["audio/webm", "webm"],
+        ["audio/ogg;codecs=opus", "ogg"], ["audio/mp4", "mp4"],
+      ];
+      for (const [type, ext] of essais) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return { type, ext };
+      }
+      return { type: "", ext: "webm" };
+    },
+    // L'enregistrement le plus récent pour une tâche donnée. Les noms
+    // contiennent la date, donc refaire l'examen un autre jour n'écrase
+    // pas l'ancien : on peut comparer ses progrès semaine après semaine.
+    audioDe(i) {
+      if (!this.combiOral) return null;
+      const debut = `${this.combiOral.id}_tache-${i + 1}_`;
+      return this.audios.find(a => a.fichier.startsWith(debut)) || null;
+    },
+    nbEnregistrements(c) {
+      return [0, 1, 2].filter(i =>
+        this.audios.some(a => a.fichier.startsWith(`${c.id}_tache-${i + 1}_`))).length;
+    },
+    async chargerAudios() {
+      try {
+        const r = await fetch("/audios");
+        const j = await r.json();
+        if (j.ok) { this.audios = j.audios; this.serveurPresent = true; }
+      } catch (e) { this.serveurPresent = false; }
+    },
+
+    // ---------- Micro ----------
+    async ouvrirOngletOral() {
+      this.onglet = "oral";
+      await this.chargerAudios();
+      this.etatMicro();
+    },
+    async etatMicro() {
+      try {
+        const r = await fetch("/micro");
+        const j = await r.json();
+        if (j.ok) { this.micro = j; this.serveurPresent = true; }
+      } catch (e) { this.serveurPresent = false; }
+    },
+    // Un casque Bluetooth ne peut pas jouer en haute qualité ET écouter en
+    // même temps : il faut choisir. Sans ce bouton, le micro du casque
+    // n'apparaît nulle part et on ne comprend pas pourquoi.
+    async basculerMicro(mode) {
+      this.microEnCours = true;
+      try {
+        const r = await fetch("/micro", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          this.micro = j;
+          // Le changement de profil recrée les périphériques : on repart de zéro.
+          this.arreterMicro();
+          this.microChoisi = "";
+          this.microsDispo = [];
+        } else { alert(j.message); }
+      } catch (e) { alert("Le serveur n'est pas lancé."); }
+      finally { this.microEnCours = false; }
+    },
+    // Tout ce que le système présente comme « entrée audio » n'est pas un
+    // micro : il y a aussi des boucles internes (loopback) et des moniteurs
+    // de haut-parleur. Branchée dessus, la page enregistre… le silence.
+    // On les reconnaît à leur nom et on ne les propose qu'en dernier.
+    estVraiMicro(label) {
+      return !/loopback|monitor|aloop|moniteur|retour/i.test(label || "");
+    },
+    async listerMicros() {
+      try {
+        const appareils = await navigator.mediaDevices.enumerateDevices();
+        this.microsDispo = appareils
+          .filter(d => d.kind === "audioinput")
+          .map(d => ({ deviceId: d.deviceId, label: d.label || "Micro sans nom" }));
+        if (!this.microChoisi && this.microsDispo.length) {
+          const vrai = this.microsDispo.find(m => this.estVraiMicro(m.label));
+          this.microChoisi = (vrai || this.microsDispo[0]).deviceId;
+        }
+      } catch (e) { /* pas grave : on gardera le micro par défaut */ }
+    },
+    messageErreurMicro(e) {
+      const nom = e && e.name;
+      if (nom === "NotAllowedError" || nom === "SecurityError") {
+        return "Le micro a été refusé. Clique sur le 🔒 (ou 🎙️) à gauche de l'adresse, "
+             + "autorise le microphone, puis recharge la page.";
+      }
+      if (nom === "NotFoundError" || nom === "OverconstrainedError") {
+        return "Aucun micro trouvé. Si tu utilises ton casque Bluetooth, reviens à "
+             + "l'accueil et clique « Activer le micro du casque ».";
+      }
+      if (nom === "NotReadableError") {
+        return "Le micro est déjà pris par une autre application (Zoom, Meet…). Ferme-la et réessaie.";
+      }
+      return "Micro indisponible : " + (e && e.message ? e.message : "erreur inconnue");
+    },
+    ouvrirFlux(id) {
+      const base = { echoCancellation: true, noiseSuppression: true };
+      return navigator.mediaDevices.getUserMedia({
+        audio: id ? Object.assign({ deviceId: { exact: id } }, base) : base,
+      });
+    },
+    async testerMicro() {
+      this.erreurMicro = "";
+      this.arreterMicro();
+      const demande = this.microChoisi;   // vide = « prends celui du système »
+      try {
+        this.flux = await this.ouvrirFlux(demande);
+        // Les noms des micros n'existent qu'une fois l'autorisation donnée :
+        // c'est seulement maintenant qu'on peut voir si le micro du système
+        // en est vraiment un. Sur cet ordinateur, le micro « par défaut » est
+        // une boucle audio qui n'enregistre rien — d'où ce rattrapage.
+        await this.listerMicros();
+        if (!demande && this.microChoisi) {
+          const ouvert = this.flux.getAudioTracks()[0];
+          const actuel = ouvert && ouvert.getSettings ? ouvert.getSettings().deviceId : "";
+          if (actuel !== this.microChoisi) {
+            this.flux.getTracks().forEach(p => p.stop());
+            this.flux = await this.ouvrirFlux(this.microChoisi);
+          }
+        }
+        this.microPret = true;
+        this.ecouterNiveau();
+      } catch (e) {
+        this.microPret = false;
+        this.erreurMicro = this.messageErreurMicro(e);
+      }
+    },
+    // Le vumètre : la seule preuve visible que le micro capte vraiment
+    // quelque chose. Sans lui, on découvre le silence après 4 minutes.
+    ecouterNiveau() {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx || !this.flux) return;
+      this.audioCtx = new Ctx();
+      const source = this.audioCtx.createMediaStreamSource(this.flux);
+      this.analyseur = this.audioCtx.createAnalyser();
+      this.analyseur.fftSize = 512;
+      source.connect(this.analyseur);
+      const donnees = new Uint8Array(this.analyseur.fftSize);
+      let calme = 0;
+      const boucle = () => {
+        this.analyseur.getByteTimeDomainData(donnees);
+        let max = 0;
+        for (let i = 0; i < donnees.length; i++) {
+          const v = Math.abs(donnees[i] - 128);
+          if (v > max) max = v;
+        }
+        const niveau = Math.min(1, max / 55);  // 55 ≈ une voix normale
+        // Les barres du milieu montent plus haut : ça ressemble à un vrai vumètre.
+        this.barres = this.barres.map((h, i) => {
+          const forme = 0.45 + 0.55 * Math.sin((i / (this.barres.length - 1)) * Math.PI);
+          const cible = 2 + niveau * 40 * forme;
+          return Math.round(h + (cible - h) * 0.45);
+        });
+        calme = niveau < 0.05 ? calme + 1 : 0;
+        this.silence = calme > 180;            // ~3 secondes sans rien entendre
+        this.animId = requestAnimationFrame(boucle);
+      };
+      boucle();
+    },
+    arreterMicro() {
+      if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
+      if (this.audioCtx) { this.audioCtx.close().catch(() => {}); this.audioCtx = null; }
+      if (this.flux) { this.flux.getTracks().forEach(p => p.stop()); this.flux = null; }
+      this.analyseur = null;
+      this.microPret = false;
+      this.silence = false;
+      this.barres = this.barres.map(() => 2);
+    },
+
+    // ---------- Déroulement de l'examen oral ----------
+    async commencerOral(c) {
+      this.combiOral = c;
+      this.tacheOral = 0;
+      this.phaseOral = "pret";
+      this.notesOral = ["", "", ""];
+      this.urlEcoute = "";
+      this.messageAudio = "";
+      this.bilan = null;
+      this.evaluationTexte = "";
+      this.evalErreur = "";
+      this.messageExport = "";
+      this.vue = "oral";
+      await this.chargerAudios();
+      this.testerMicro();
+    },
+    async lancerTache() {
+      if (!this.flux) await this.testerMicro();
+      if (!this.flux) return;   // micro refusé : inutile d'aller plus loin
+      if (this.tOral.prep > 0) {
+        this.phaseOral = "prep";
+        this.chronoOral = this.tOral.prep;
+        clearInterval(this.timerOral);
+        this.timerOral = setInterval(() => this.ticOral(), 1000);
+      } else {
+        this.demarrerEnregistrement();
+      }
+    },
+    ticOral() {
+      this.chronoOral--;
+      if (this.phaseOral === "rec") this.dureeEnregistree++;
+      if (this.chronoOral > 0) return;
+      this.chronoOral = 0;
+      clearInterval(this.timerOral);
+      // Fin de la préparation : on enchaîne tout seul, comme à l'examen.
+      if (this.phaseOral === "prep") this.demarrerEnregistrement();
+      else this.arreterEnregistrement();
+    },
+    async demarrerEnregistrement() {
+      if (!this.flux) await this.testerMicro();
+      if (!this.flux) return;
+      const f = this.formatAudio();
+      this.morceaux = [];
+      try {
+        this.enregistreur = new MediaRecorder(this.flux, f.type ? { mimeType: f.type } : {});
+      } catch (e) {
+        this.erreurMicro = "Ce navigateur ne sait pas enregistrer. Essaie avec Chrome ou Firefox.";
+        this.phaseOral = "pret";
+        return;
+      }
+      this.enregistreur.ondataavailable = e => { if (e.data && e.data.size) this.morceaux.push(e.data); };
+      this.enregistreur.onstop = () => this.finirEnregistrement(f);
+      this.enregistreur.start(1000);   // un morceau par seconde : rien n'est perdu si ça plante
+      this.phaseOral = "rec";
+      this.chronoOral = this.tOral.duree;
+      this.dureeEnregistree = 0;
+      clearInterval(this.timerOral);
+      this.timerOral = setInterval(() => this.ticOral(), 1000);
+    },
+    arreterEnregistrement() {
+      clearInterval(this.timerOral);
+      if (this.enregistreur && this.enregistreur.state !== "inactive") {
+        this.enregistreur.stop();   // la suite se passe dans finirEnregistrement
+      } else {
+        this.phaseOral = "fini";
+      }
+    },
+    async finirEnregistrement(f) {
+      const blob = new Blob(this.morceaux, { type: f.type || "audio/webm" });
+      this.morceaux = [];
+      if (this.urlEcoute) URL.revokeObjectURL(this.urlEcoute);
+      // On peut se réécouter tout de suite, sans attendre le serveur.
+      this.urlEcoute = URL.createObjectURL(blob);
+      this.phaseOral = "fini";
+
+      if (!blob.size) {
+        this.messageAudio = "⚠️ L'enregistrement est vide : le micro n'a rien capté. Refais la tâche.";
+        return;
+      }
+      const nom = `${this.combiOral.id}_tache-${this.tacheOral + 1}_${this.aujourdhui()}.${f.ext}`;
+      this.messageAudio = "⏳ Sauvegarde…";
+      try {
+        const r = await fetch("/audio?nom=" + encodeURIComponent(nom), {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: blob,
+        });
+        const j = await r.json();
+        if (j.ok) {
+          this.messageAudio = `💾 Gardé dans mes_audios/${nom} (${Math.round(j.octets / 1024)} Ko)`;
+          await this.chargerAudios();
+        } else {
+          this.messageAudio = "⚠️ " + j.message;
+        }
+      } catch (e) {
+        this.messageAudio = "⚠️ Serveur éteint : tu peux t'écouter maintenant, mais "
+          + "l'enregistrement sera perdu en fermant la page.";
+      }
+    },
+    refaireTache() {
+      this.phaseOral = "pret";
+      this.messageAudio = "";
+      if (this.urlEcoute) { URL.revokeObjectURL(this.urlEcoute); this.urlEcoute = ""; }
+      if (!this.flux) this.testerMicro();
+    },
+    tacheOralSuivante() {
+      if (this.urlEcoute) { URL.revokeObjectURL(this.urlEcoute); this.urlEcoute = ""; }
+      this.messageAudio = "";
+      if (this.tacheOral < 2) {
+        this.tacheOral++;
+        this.phaseOral = "pret";
+        if (!this.flux) this.testerMicro();
+      } else {
+        this.voirResultatOral(this.combiOral);
+      }
+    },
+    arreterOral() {
+      clearInterval(this.timerOral);
+      if (this.enregistreur && this.enregistreur.state !== "inactive") {
+        this.enregistreur.onstop = null;   // on ne veut pas sauvegarder un abandon
+        this.enregistreur.stop();
+      }
+      this.enregistreur = null;
+      this.arreterMicro();
+    },
+    quitterOral() {
+      if (this.phaseOral === "rec"
+          && !confirm("Tu es en train de parler.\n\nQuitter maintenant perdra cet enregistrement.")) return;
+      this.arreterOral();
+      this.onglet = "oral";
+      this.vue = "accueil";
+      this.chargerAudios();
+    },
+    cleOral(id) { return "tcf-oral-" + id; },
+    async voirResultatOral(c) {
+      this.combiOral = c;
+      this.arreterOral();
+      this.bilan = null;
+      this.evaluationTexte = "";
+      this.evalErreur = "";
+      this.messageExport = "";
+      this.vue = "oralResultats";
+      await this.chargerAudios();
+      // On retrouve l'évaluation déjà reçue pour cet examen, s'il y en a une.
+      try {
+        const r = JSON.parse(localStorage.getItem(this.cleOral(c.id)));
+        if (r) { this.bilan = r.bilan || null; this.evaluationTexte = r.evaluationTexte || ""; }
+      } catch (e) { /* rien de gardé : c'est normal la première fois */ }
+    },
+    archiverOral() {
+      if (!this.combiOral) return;
+      localStorage.setItem(this.cleOral(this.combiOral.id), JSON.stringify({
+        bilan: this.bilan, evaluationTexte: this.evaluationTexte, horodatage: Date.now(),
+      }));
+    },
+
+    // ---------- Transcription (Whisper, sur cet ordinateur) ----------
+    async transcrire(i) {
+      const a = this.audioDe(i);
+      if (!a || this.transcriEnCours !== null) return;
+      this.transcriEnCours = i;
+      try {
+        const r = await fetch("/transcrire", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fichier: a.fichier, refaire: !!a.texte }),
+        });
+        const j = await r.json();
+        if (j.ok) {
+          this.moteurTranscription = j.moteur || "";
+          await this.chargerAudios();
+        } else {
+          alert(j.message);
+        }
+      } catch (e) {
+        alert("Le serveur n'est pas lancé.\n\nOuvre http://localhost:8777 au lieu du fichier.");
+      } finally {
+        this.transcriEnCours = null;
+      }
+    },
+    async toutTranscrire() {
+      for (let i = 0; i < 3; i++) {
+        const a = this.audioDe(i);
+        if (a && !a.texte) await this.transcrire(i);
+      }
+    },
+    copierTexte(t) {
+      navigator.clipboard.writeText(t);
+      this.messageExport = "✅ Copié !";
+      setTimeout(() => (this.messageExport = ""), 4000);
+    },
+
+    // ---------- Importer un enregistrement fait ailleurs ----------
+    // Utile si le micro de l'ordinateur ne va pas : on enregistre avec son
+    // téléphone (bien meilleur micro), on branche le câble, et on dépose le
+    // fichier ici. Le serveur le remet au bon format tout seul.
+    choisirFichier(i) {
+      this.importCible = i;
+      this.$refs.fichierAudio.click();
+    },
+    async importerFichier(e) {
+      const fichier = e.target.files && e.target.files[0];
+      e.target.value = "";  // pour pouvoir réimporter le même fichier ensuite
+      if (!fichier || this.importCible === null) return;
+      const i = this.importCible;
+      this.importCible = null;
+      this.importEnCours = i;
+      const ext = (fichier.name.split(".").pop() || "m4a").toLowerCase().slice(0, 5);
+      const nom = `${this.combiOral.id}_tache-${i + 1}_${this.aujourdhui()}.${ext}`;
+      try {
+        const r = await fetch(`/audio?nom=${encodeURIComponent(nom)}&convertir=1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: fichier,
+        });
+        const j = await r.json();
+        if (j.ok) {
+          await this.chargerAudios();
+          this.messageExport = `✅ Importé : ${j.fichier}`;
+          setTimeout(() => (this.messageExport = ""), 5000);
+        } else {
+          alert(j.message);
+        }
+      } catch (err) {
+        alert("Le serveur n'est pas lancé.");
+      } finally {
+        this.importEnCours = null;
+      }
+    },
+
+    // ---------- Évaluation de l'oral ----------
+    // Même principe qu'à l'écrit, mais les critères changent : à l'oral on
+    // juge aussi l'aisance et la prononciation. Comme Claude lit une
+    // transcription automatique, on lui dit de ne PAS compter l'orthographe
+    // ni la ponctuation : elles viennent de Whisper, pas de moi.
+    promptOral() {
+      const l = [
+        "Tu es examinateur du TCF Canada (expression ORALE). Évalue mes 3 tâches comme à l'examen réel.",
+        "",
+        "IMPORTANT : ce texte est une TRANSCRIPTION AUTOMATIQUE de ce que j'ai dit à voix haute.",
+        "Ne juge donc NI l'orthographe NI la ponctuation : elles viennent du logiciel, pas de moi.",
+        "Juge ce qui s'entend vraiment : grammaire et conjugaison, richesse du vocabulaire,",
+        "structure du discours, respect de la consigne, aisance (répétitions, hésitations, phrases",
+        "inachevées, mots d'une autre langue) et longueur par rapport au temps imparti.",
+        "Je suis hispanophone : signale-moi les tournures calquées de l'espagnol.",
+        "",
+        "Barème : chaque tâche sur 20 avec un niveau CECR (A1 à C2).",
+        "Ton encourageant mais honnête. Français clair, phrases courtes (je suis débutante).",
+        "",
+        "Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour et sans balises de code :",
+        JSON.stringify({
+          noteGlobale: "nombre seul, sur 20, sans écrire « /20 » (moyenne des 3 tâches)",
+          niveau: "niveau CECR global, ex: B1",
+          nclc: "équivalence canadienne, ex: NCLC 5",
+          leviers: ["2 conseils prioritaires pour progresser à l'oral"],
+          taches: [{
+            note: "nombre seul, sur 20, sans écrire « /20 »",
+            niveau: "niveau CECR de cette tâche, ex: B1 avancé",
+            positifs: ["2 à 4 points forts"],
+            ameliorations: ["2 à 4 points concrets, en citant mes propres mots"],
+            correction: "la même chose, redite dans un français correct et naturel, en gardant mes idées",
+          }],
+        }, null, 2),
+        "Le tableau \"taches\" doit contenir exactement 3 objets, dans l'ordre des tâches.",
+        "",
+        `EXAMEN ORAL : ${this.combiOral.titre}`,
+      ];
+      this.combiOral.taches.forEach((t, i) => {
+        const a = this.audioDe(i) || {};
+        l.push("", `--- Tâche ${i + 1} : ${t.type} (temps imparti : ${this.mmss(t.duree)}) ---`);
+        l.push(`Consigne : ${t.sujet}`);
+        l.push(`J'ai parlé ${Math.round(a.duree || 0)} s, soit ${a.mots || 0} mots `
+             + `(débit : ${a.debit || 0} mots/min).`);
+        l.push("Transcription de ce que j'ai dit :", '"""', (a.texte || "(vide)"), '"""');
+      });
+      return l.join("\n");
+    },
+    copierPourIAOral() {
+      navigator.clipboard.writeText(this.promptOral());
+      this.messageExport = "✅ Copié ! Ouvre ChatGPT (ou une autre IA) et colle (Ctrl+V).";
+      setTimeout(() => (this.messageExport = ""), 5000);
+    },
+    async evaluerOral() {
+      this.bilan = null;
+      this.evaluationTexte = "";
+      this.evalErreur = "";
+      this.evalEnCours = true;
+      try {
+        const r = await fetch("/evaluer", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: this.promptOral() }),
+        });
+        const j = await r.json();
+        if (!j.ok) this.evalErreur = j.message;
+        else {
+          const b = this.lireBilan(j.evaluation);
+          if (b) this.bilan = b;
+          else this.evaluationTexte = j.evaluation;
+        }
+      } catch (e) {
+        this.evalErreur = "Le serveur d'évaluation n'est pas lancé.\n\n"
+          + "Ouvre http://localhost:8777 (pas le double-clic sur le fichier).";
+      } finally {
+        this.evalEnCours = false;
+        this.archiverOral();
+      }
+    },
+  },
+  beforeUnmount() {
+    // Sans ça, la pastille rouge « enregistrement » resterait allumée
+    // dans l'onglet du navigateur après avoir quitté.
+    this.arreterOral();
+  },
+}).mount("#app");
+</script>
+</body>
+</html>

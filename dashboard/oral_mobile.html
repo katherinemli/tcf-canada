@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed">
+<title>TCF Oral — mobile</title>
+<!--
+  ============================================================
+  SIMULATEUR TCF — EXPRESSION ORALE, VERSION TÉLÉPHONE
+
+  Ce fichier marche TOUT SEUL : pas de serveur, pas d'Internet,
+  rien à installer. On le copie sur le téléphone et on l'ouvre.
+  C'est fait exprès : pour s'entraîner ailleurs qu'à son bureau,
+  là où on ose parler à voix haute.
+
+  Deux façons de s'en servir, la page choisit toute seule :
+
+  • Ouvert depuis un fichier (file://) — le navigateur interdit le
+    micro. La page devient alors un CHRONO + le sujet à l'écran,
+    et c'est l'application « Enregistreur » du téléphone qui capte
+    la voix. On importe les fichiers sur l'ordinateur plus tard.
+
+  • Ouvert depuis http://localhost:8777 ou en HTTPS — le micro est
+    autorisé : la page enregistre elle-même et propose de garder
+    le fichier.
+
+  Les sujets sont recopiés plus bas pour que le fichier soit
+  autonome. Si questions_oral.js est posé à côté, ils sont
+  remplacés par ceux-là : les deux restent donc d'accord.
+  ============================================================
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --violet: #7c3aed; --violet-clair: #f5f3ff; --rouge: #dc2626;
+    --fond: #f8fafc; --bord: #e2e8f0; --texte: #1e293b; --doux: #64748b;
+  }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--fond); color: var(--texte);
+    padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+    line-height: 1.5; -webkit-text-size-adjust: 100%;
+  }
+  button { font-family: inherit; cursor: pointer; font-size: 16px; }
+
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: calc(14px + env(safe-area-inset-top)) 0 14px;
+    position: sticky; top: 0; background: var(--fond); z-index: 5;
+  }
+  header h1 { font-size: 17px; flex: 1; }
+  .retour {
+    border: none; background: #fff; border: 1px solid var(--bord);
+    width: 40px; height: 40px; border-radius: 12px; font-size: 19px; flex-shrink: 0;
+  }
+
+  .carte {
+    background: #fff; border: 1px solid var(--bord); border-radius: 16px;
+    padding: 18px; margin-bottom: 12px;
+  }
+  .carte h2 { font-size: 16px; margin-bottom: 4px; }
+  .carte p.sous { font-size: 13.5px; color: var(--doux); }
+
+  .btn {
+    display: block; width: 100%; border: none; border-radius: 14px;
+    padding: 16px; font-size: 16.5px; font-weight: 700; color: #fff;
+    background: var(--violet); margin-top: 12px;
+  }
+  .btn.gris { background: #fff; color: var(--texte); border: 1px solid var(--bord); font-weight: 600; }
+  .btn.rouge { background: var(--rouge); }
+  .btn:disabled { background: #cbd5e1; }
+
+  .tuiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .tuile {
+    border: 1px solid var(--bord); background: #fff; border-radius: 12px;
+    padding: 12px 6px; text-align: center; font-size: 12.5px; color: var(--texte);
+  }
+  .tuile b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .tuile.fait { border-color: #a7f3d0; background: #ecfdf5; }
+
+  /* --- Écran d'une tâche --- */
+  .sujet {
+    background: var(--violet-clair); border: 1px solid #ddd6fe;
+    border-radius: 16px; padding: 18px; font-size: 17px; font-weight: 500;
+  }
+  .etat {
+    display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+    padding: 7px 16px; font-size: 13.5px; font-weight: 700; margin-bottom: 4px;
+  }
+  .etat.prep { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .etat.rec { background: #fef2f2; color: var(--rouge); border: 1px solid #fca5a5; }
+  .etat .pt {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--rouge);
+    animation: clign 1s infinite;
+  }
+  @keyframes clign { 50% { opacity: .3; } }
+
+  .anneau { position: relative; width: 240px; height: 240px; margin: 18px auto; }
+  .anneau svg { transform: rotate(-90deg); }
+  .anneau circle { fill: none; stroke-width: 14; stroke-linecap: round; }
+  .anneau .fond { stroke: var(--bord); }
+  .anneau .trait { stroke: var(--violet); transition: stroke-dashoffset .95s linear; }
+  .anneau.urgent .trait { stroke: var(--rouge); }
+  .anneau .centre {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .anneau .tps { font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .anneau.urgent .tps { color: var(--rouge); }
+  .anneau .quoi { font-size: 13px; color: var(--doux); }
+
+  .vu { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 34px; }
+  .vu > div { width: 7px; border-radius: 99px; background: var(--bord); transition: height .08s; }
+  .vu > div.on { background: #22c55e; }
+
+  textarea {
+    width: 100%; min-height: 130px; border: 1px solid var(--bord);
+    border-radius: 14px; padding: 14px; font-size: 16px; font-family: inherit;
+    line-height: 1.6; resize: vertical;
+  }
+  .aide { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 16px; }
+  .aide li {
+    list-style: none; font-size: 14px; color: #78350f; padding-left: 15px;
+    position: relative; margin-bottom: 8px;
+  }
+  .aide li::before { content: "›"; position: absolute; left: 2px; font-weight: 700; }
+  summary { font-size: 14.5px; font-weight: 600; color: var(--violet); padding: 6px 0; }
+
+  .info {
+    font-size: 13.5px; line-height: 1.6; border-radius: 14px; padding: 14px 16px;
+    background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;
+  }
+  .info.attention { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+  .info b { font-weight: 700; }
+  .centrer { text-align: center; }
+  .doux { color: var(--doux); font-size: 13px; }
+  audio { width: 100%; margin-top: 12px; }
+  .cache { display: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Si le fichier est posé à côté, ses sujets remplacent la copie
+     ci-dessous. Sinon l'erreur est ignorée et la copie sert. -->
+<script src="questions_oral.js" onerror="void 0"></script>
+<script>
+// ============================================================
+// LES SUJETS (copie de secours, pour que le fichier marche seul)
+// ============================================================
+const SECOURS = [
+  // ⚠️ Fabriqué par generer_sujets_java.py depuis sujets_oraux.json.
+  ["Je suis un(e) ami(e) français(e) et je reviens d’un séjour sportif. Vous trouvez cette expérience intéressante et vous aimeriez faire la même chose. Vous me posez des questions sur ce séjour (lieu, activités, tarifs, etc.).",
+   "Selon vous, quelle influence la télévision a-t-elle sur l’éducation des enfants ?"],
+  ["Je travaille à l’accueil d’une billetterie de spectacles. Vous êtes en vacances au Canada et vous souhaitez assister à un spectacle. Vous me posez des questions pour faire votre choix (types de spectacles, horaires, prix, etc.).",
+   "Pourquoi certaines personnes choisissent-elles d’avoir un animal domestique chez elles ?"],
+  ["Je suis un(e) ami(e) et vous souhaitez vous installer dans ma ville. Vous cherchez un quartier agréable pour y vivre. Vous me posez des questions afin de choisir celui qui vous convient le mieux (environnement, prix, services, etc.).",
+   "Aujourd’hui, beaucoup de personnes cherchent à rester jeunes le plus longtemps possible. Que pensez-vous de cette tendance ?"],
+  ["Je travaille à l’accueil dans une école de langue. Vous souhaitez suivre une formation en français et vous me posez des questions pour choisir le stage le plus adapté (type de formation, durée, tarifs, etc.).",
+   "Comment évaluez-vous les mesures prises pour réduire la pollution dans votre ville ?"],
+  ["Je suis un(e) ami(e) et je travaille dans une entreprise canadienne. Vous souhaitez travailler au Canada et vous me posez des questions sur mon expérience (formation, tâches, relations professionnelles, conditions de travail, etc.).",
+   "Que pensez-vous de la qualité de l’alimentation dans votre pays ? Pouvez-vous expliquer votre réponse ?"],
+  ["Je suis votre collègue. J’organise des séances de yoga pour les employé(e)s de l’entreprise. Vous êtes intéressé(e). Vous me posez des questions pour obtenir des informations (lieux, horaires, équipements, etc.).",
+   "De nombreuses personnes deviennent végétariennes. Que pensez-vous de ce choix alimentaire ?"],
+  ["Je suis votre voisin(e). Je prends des cours de photographie dans l’association du quartier. Vous êtes intéressé(e). Vous me posez des questions sur le cours (prix, horaires, matériel, etc.).",
+   "Peut-on vraiment faire tous ses achats sur Internet ? Qu’en pensez-vous ?"],
+  ["Je travaille à l’accueil du nouveau centre culturel de votre ville. Vous êtes intéressé(e). Vous me posez des questions sur les activités proposées par le centre (horaires, prix, etc.).",
+   "Le salaire est-il l’élément le plus important dans un travail ? Êtes-vous d’accord ?"],
+  ["Je travaille à l’office de tourisme de votre lieu de vacances. Vous me posez des questions sur les activités à faire dans la région (parcs, musées, restaurants, etc.).",
+   "Les membres de la famille peuvent-ils être nos meilleurs amis ? Expliquez pourquoi."],
+  ["Vous êtes mon ami(e). Vous allez m’aider à déménager dans mon nouveau logement. Vous me posez des questions sur l’organisation de la journée (lieu, date, participants, etc.).",
+   "Pour les personnes âgées, la vie en ville est-elle plus facile qu’à la campagne ? Êtes-vous d’accord ?"],
+  ["Je suis une amie / un ami(e). Je pars pour le week-end et je vous demande de garder ma fille de 3 ans. Vous la connaissez un peu. Je vous indique les horaires et les choses à faire. Vous me posez des questions pour bien vous organiser (repas, jeux, sieste, etc.).",
+   "La mission principale de l’école est d’enseigner les matières scolaires. Que pensez-vous de cette idée ? Pourquoi ?"],
+  ["Je suis une collègue. Je vous propose d’aller voir un spectacle. Vous me posez des questions sur ce spectacle (genre, lieu, heure, etc.) et sur la sortie (transport, personnes présentes, etc.).",
+   "La lecture est souvent liée à la culture. Faut-il lire pour être cultivé ? Qu’en pensez-vous ?"],
+  ["Je travaille au service culturel de la mairie. Vous voulez en savoir plus sur les activités culturelles de la ville. Vous me posez des questions (expositions, musées, ateliers, prix, accès, etc.).",
+   "Lorsqu’une personne quitte son pays pour vivre ailleurs, c’est souvent une décision imposée. Qu’en pensez-vous ?"],
+  ["Je travaille dans une agence de voyage. Vous êtes client(e) et vous cherchez un séjour au Canada. Vous me posez des questions (endroits à visiter, prix, hébergements, activités, etc.).",
+   "D’après vous, la liberté d’expression doit-elle avoir des limites ? Pourquoi ?"],
+  ["Vous êtes en voiture au Canada et vous tombez en panne. Vous appelez votre assurance pour savoir comment elle peut vous aider (dépannage, réparations, retour, etc.). Je suis l’agent qui vous répond.",
+   "Est-il possible, selon vous, de bien connaître un pays sans parler sa langue ? Pourquoi ?"],
+  ["Je suis votre ami(e). J’ai commencé un nouvel emploi et vous voulez savoir comment s’est déroulée ma première journée : l’ambiance, les collègues, les tâches, etc.",
+   "Avoir vécu dans un pays étranger constitue-t-il un atout pour réussir sa carrière professionnelle ?"],
+  ["Je suis votre voisin(e). Je connais quelqu’un qui propose des cours de musique à domicile. Vous êtes intéressé(e) et vous me posez des questions sur cette personne : ses tarifs, sa disponibilité, son expérience, etc.",
+   "Le tourisme représente-t-il une voie de développement intéressante pour tous les pays ? Pourquoi ?"],
+  ["Je suis votre voisin(e). Vous souhaitez organiser une sortie à la campagne avec vos amis. Vous me demandez des conseils pour l’organisation : les activités, le transport, le lieu, etc.",
+   "Selon vous, est-il difficile de s’installer à l’étranger ? Pourquoi ?"],
+  ["Je travaille dans un magasin d’alimentation. Vous êtes client(e) et vous voulez faire livrer vos courses chez vous. Vous me posez des questions sur les conditions offertes : délais, tarifs, mode de livraison, etc.",
+   "Est-il préférable de commencer l’apprentissage des langues étrangères dès l’enfance ? Pourquoi ?"],
+  ["Je travaille dans une agence immobilière. Vous voulez louer votre appartement pour les vacances afin de gagner plus d’argent. Vous me demandez des conseils sur les prix, la durée de location, le type de locataires, etc.",
+   "D’après vous, pour quelles raisons les gens aiment-ils découvrir la vie des célébrités ?"],
+  ["Sujet 1 : Je suis chef cuisinier/cheffe cuisinière à domicile. Vous souhaitez organiser un repas de famille. Vous me posez des questions sur ce que je peux vous proposer (plats, matériel, prix, etc.).",
+   "Il est plus facile de partir vivre dans un pays étranger quand on est jeune. Êtes-vous d’accord avec cette affirmation ?"],
+  ["Je suis votre voisin(e). Je suis conductrice/conducteur et je propose de partager des allers-retours avec ma voiture. Vous êtes intéressé(e) et me posez des questions sur ce type de service (prix, horaires, organisation, etc.).",
+   "Le télétravail permet d’avoir un bon équilibre entre vie professionnelle et vie personnelle. Qu’en pensez-vous ?"],
+  ["Je travaille à l’accueil dans une école de musique. Vous voulez vous inscrire à un cours. Vous me posez des questions (types de cours, horaires, tarifs, etc.) et je vous communique des informations.",
+   "Les caméras de surveillance permettent d’améliorer la sécurité des citoyens dans les lieux publics. Est-ce que vous êtes d’accord ?"],
+  ["Je travaille à l’accueil d’un club de sport. Vous êtes intéressé(e). Vous me posez des questions pour obtenir des informations (types de sports, horaires, tarifs, etc.).",
+   "Pensez-vous que le choix des vêtements est important dans la vie ? Expliquez pourquoi."],
+  ["Je travaille à l’accueil d’un hôtel. Vous voulez réserver une chambre. Vous me posez des questions et je vous communique des informations (prix, type de chambre, petit-déjeuner, etc.).",
+   "Pour sauver l’environnement, les actions de chaque personne (tri, économie d’eau, économie d’énergie, etc.) sont efficaces. Qu’en pensez-vous ?"],
+  ["Je travaille à la réception d’une école de musique. Vous voulez vous inscrire à des cours. Vous me posez des questions sur ce que l’école propose (leçons, prix, emploi du temps, instruments, etc.).",
+   "Travailler avec des amis ou des membres de la famille est-il une bonne idée ? Qu’en pensez-vous ?"],
+  ["Je suis votre ami(e) et j’habite à Ottawa. Vous venez d’arriver dans la ville et vous souhaitez circuler à vélo. Vous me posez des questions pour savoir si c’est pratique (pistes, location, matériel, etc.).",
+   "Internet a-t-il modifié les comportements au travail ? Qu’en pensez-vous ?"],
+  ["Je suis votre ami(e). Vous avez envie de partir un week-end pour vous reposer. Vous me posez des questions pour avoir des suggestions (endroits, activités, transport, etc.).",
+   "Un monde sans frontière, sans passeport ni visa est-il possible ? Pourquoi ?"],
+  ["Je suis votre ami(e). Je vis au Canada depuis deux ans. Vous êtes en train de préparer votre arrivée au Canada. Vous me posez des questions sur mon vécu (habitudes, vie courante, adaptation, etc.).",
+   "S’installer dans un nouveau pays est difficile. Qu’en pensez-vous ?"],
+  ["Je suis votre voisin(e). Je connais une personne qui fait des petits services à domicile. Vous voulez en savoir plus et vous me posez des questions (compétences, horaires, tarifs, etc.).",
+   "Que pensez-vous de l’internet en général ?"],
+];
+
+const AIDE = {
+  1: ["Bonjour, je m'appelle… J'ai … ans et je suis originaire de…",
+      "Actuellement, je vis à … depuis … ans.",
+      "En ce qui concerne mes études, j'ai obtenu un diplôme en…",
+      "Sur le plan professionnel, je travaille comme…",
+      "Pendant mon temps libre, j'aime … et je m'intéresse à…",
+      "Mon projet, c'est de… C'est pour ça que je passe le TCF."],
+  2: ["Bonjour ! Excusez-moi, j'aurais besoin d'un renseignement.",
+      "Est-ce que vous pourriez me dire… ?",
+      "J'aimerais savoir combien ça coûte. / Quel est le tarif ?",
+      "Est-ce qu'il y a une réduction pour les étudiants ?",
+      "Ça se passe où exactement ? C'est loin du centre ?",
+      "Et au niveau des horaires, comment ça marche ?",
+      "Qu'est-ce que vous me conseillez ?",
+      "Très bien, merci beaucoup pour ces informations !"],
+  3: ["Introduction : « C'est une question intéressante. À mon avis, … »",
+      "1er argument : « Tout d'abord, … Par exemple, dans mon pays, … »",
+      "2e argument : « De plus, … C'est le cas de … »",
+      "Nuance : « Cependant, il ne faut pas oublier que… »",
+      "Exemple perso : « Personnellement, j'ai remarqué que… »",
+      "Conclusion : « Pour conclure, je pense donc que… »"],
+};
+
+// Les sujets viennent de questions_oral.js s'il est là, sinon de SECOURS.
+const SUJETS = (window.QUESTIONS_ORAL && window.QUESTIONS_ORAL.length)
+  ? window.QUESTIONS_ORAL.map(c => [c.taches[1].sujet, c.taches[2].sujet])
+  : SECOURS;
+
+const PRESENTATION = "Bonjour, présentez-vous. Parlez-moi de vous pendant deux minutes.";
+
+// Une tâche = { titre, sujet, prep (s), duree (s) }
+function taches(n) {
+  return [
+    { titre: "Présentation personnelle", sujet: PRESENTATION, prep: 0, duree: 120, aide: AIDE[1] },
+    { titre: "Interaction orale", sujet: SUJETS[n][0], prep: 120, duree: 210, aide: AIDE[2] },
+    { titre: "Argumentation", sujet: SUJETS[n][1], prep: 0, duree: 270, aide: AIDE[3] },
+  ];
+}
+
+// ============================================================
+// ÉTAT — volontairement minimal : c'est une page d'entraînement,
+// pas un dossier à conserver. Ce qui compte reste dans l'audio.
+// ============================================================
+const S = {
+  ecran: "accueil",   // accueil | tache
+  combi: 0,
+  numero: 0,          // index de la tâche (0, 1, 2)
+  phase: "pret",      // pret | prep | rec | fini
+  reste: 0,
+  notes: "",
+  minuteur: null,
+  faites: [],         // tâches déjà enregistrées dans cette session
+  // Enregistrement (seulement si le navigateur l'autorise)
+  flux: null, rec: null, morceaux: [], url: "", ctx: null, analyseur: null, anim: null,
+  niveau: 0, secondes: 0, veille: null,
+};
+
+// Le micro n'est donné qu'aux pages « sûres » (https ou localhost).
+// Ouverte depuis un fichier, la page sert de chrono : c'est prévu.
+const PEUT_ENREGISTRER = !!(window.isSecureContext
+  && navigator.mediaDevices && navigator.mediaDevices.getUserMedia
+  && window.MediaRecorder);
+
+const $ = s => document.querySelector(s);
+const mmss = t => {
+  t = Math.max(0, Math.round(t));
+  return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0");
+};
+const echapper = t => String(t).replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ============================================================
+// AFFICHAGE
+// ============================================================
+function dessiner() {
+  $("#app").innerHTML = S.ecran === "accueil" ? vueAccueil() : vueTache();
+  brancher();
+}
+
+function vueAccueil() {
+  const dejaFaites = n => S.faites.filter(f => f.combi === n).length;
+  return `
+    <header><h1>🎙️ TCF Oral — entraînement</h1></header>
+
+    ${PEUT_ENREGISTRER ? `
+      <div class="info">✅ Cette page peut <b>enregistrer ta voix</b> directement.</div>
+    ` : `
+      <div class="info attention">
+        🎧 Ici, le navigateur n'autorise pas le micro (c'est normal quand on ouvre
+        un fichier). Cette page te donne donc <b>le sujet et le chrono</b> :
+        lance l'application <b>Enregistreur</b> de ton téléphone en même temps.
+        <br><br>
+        Astuce : ouvre l'enregistreur, appuie sur « rec », puis reviens ici et
+        appuie sur « Commencer ». À la fin, tu retrouveras l'audio dans ton
+        téléphone — tu l'importeras sur l'ordinateur plus tard.
+      </div>
+    `}
+
+    <div class="carte" style="margin-top:12px">
+      <h2>Choisis une combinaison</h2>
+      <p class="sous">3 tâches · 12 minutes en tout</p>
+      ${SUJETS.map((_, n) => `
+        <button class="btn ${n ? 'gris' : ''}" data-combi="${n}">
+          Combinaison ${n + 1}${dejaFaites(n) ? ` · ${dejaFaites(n)}/3 faites` : ""}
+        </button>`).join("")}
+    </div>
+
+    <div class="carte">
+      <h2>Une seule tâche</h2>
+      <p class="sous">Pour travailler un point précis, sans tout refaire.</p>
+      <div class="tuiles">
+        <button class="tuile" data-solo="0"><b>Tâche 1</b>Présentation<br>2 min</button>
+        <button class="tuile" data-solo="1"><b>Tâche 2</b>Interaction<br>3 min 30</button>
+        <button class="tuile" data-solo="2"><b>Tâche 3</b>Argumentation<br>4 min 30</button>
+      </div>
+      <p class="doux" style="margin-top:10px">Sujet tiré de la combinaison ${S.combi + 1}.</p>
+    </div>
+
+    <p class="doux centrer" style="margin-top:18px">
+      Cherche un endroit où tu oses parler fort :<br>
+      la voiture, un couloir, dehors, chez toi. Ça change tout.
+    </p>`;
+}
+
+function vueTache() {
+  const t = taches(S.combi)[S.numero];
+  const total = S.phase === "prep" ? t.prep : t.duree;
+  const fraction = total > 0 ? Math.max(0, S.reste / total) : 0;
+  const urgent = S.reste <= 30 ? "urgent" : "";
+  const C = 2 * Math.PI * 105;
+
+  const anneau = `
+    <div class="anneau ${urgent}">
+      <svg width="240" height="240">
+        <circle class="fond" cx="120" cy="120" r="105"></circle>
+        <circle class="trait" cx="120" cy="120" r="105"
+                stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - fraction)}"></circle>
+      </svg>
+      <div class="centre">
+        <div class="tps">${mmss(S.reste)}</div>
+        <div class="quoi">${S.phase === "prep" ? "préparation" : "temps de parole"}</div>
+      </div>
+    </div>`;
+
+  const vu = PEUT_ENREGISTRER ? `
+    <div class="vu">${Array.from({ length: 12 }, (_, i) => {
+      const forme = 0.45 + 0.55 * Math.sin((i / 11) * Math.PI);
+      const h = Math.max(3, Math.round(3 + S.niveau * 30 * forme));
+      return `<div class="${S.niveau > 0.08 ? "on" : ""}" style="height:${h}px"></div>`;
+    }).join("")}</div>` : "";
+
+  let corps = "";
+
+  if (S.phase === "pret") {
+    corps = `
+      <div class="sujet">${echapper(t.sujet)}</div>
+      ${t.prep ? `<p class="doux centrer" style="margin-top:14px">
+          ${mmss(t.prep)} pour préparer, puis ${mmss(t.duree)} pour parler.
+          L'enregistrement démarre tout seul.</p>`
+        : `<p class="doux centrer" style="margin-top:14px">
+          ${mmss(t.duree)} de parole, sans préparation. Comme à l'examen.</p>`}
+      ${PEUT_ENREGISTRER ? "" : `
+        <div class="info attention" style="margin-top:14px">
+          ▶️ <b>Lance ton enregistreur MAINTENANT</b>, puis appuie sur Commencer.
+        </div>`}
+      <button class="btn" id="go">▶ Commencer</button>
+      <button class="btn gris" id="retour2">← Choisir autre chose</button>`;
+
+  } else if (S.phase === "prep") {
+    corps = `
+      <div class="centrer"><span class="etat prep">✍️ Préparation</span></div>
+      ${anneau}
+      <div class="sujet">${echapper(t.sujet)}</div>
+      <textarea id="notes" placeholder="Note tes questions, tes idées… (des mots, pas des phrases)">${echapper(S.notes)}</textarea>
+      <details><summary>💡 Phrases utiles</summary>
+        <div class="aide" style="margin-top:8px"><ul>${t.aide.map(a => `<li>${echapper(a)}</li>`).join("")}</ul></div>
+      </details>
+      <button class="btn" id="parler">🎙️ Je suis prête — parler maintenant</button>`;
+
+  } else if (S.phase === "rec") {
+    corps = `
+      <div class="centrer"><span class="etat rec"><span class="pt"></span>
+        ${PEUT_ENREGISTRER ? "Enregistrement" : "À toi de parler"}</span></div>
+      ${anneau}
+      ${vu}
+      <div class="sujet" style="margin-top:14px">${echapper(t.sujet)}</div>
+      ${S.notes ? `<div class="carte" style="margin-top:12px">
+        <p class="sous" style="margin-bottom:6px">📝 Mes notes</p>
+        <div style="white-space:pre-wrap;font-size:15px">${echapper(S.notes)}</div></div>` : ""}
+      <button class="btn rouge" id="stop">⏹ J'ai fini de parler</button>`;
+
+  } else {
+    const nom = `oral-${S.combi + 1}_tache-${S.numero + 1}`;
+    corps = `
+      <div class="centrer"><span class="etat" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0">
+        ✅ Tâche terminée</span></div>
+      <div class="carte" style="margin-top:14px">
+        <h2>Tu as parlé ${mmss(S.secondes)}</h2>
+        ${S.url ? `
+          <p class="sous">Réécoute-toi — c'est là qu'on progresse le plus.</p>
+          <audio src="${S.url}" controls preload="metadata"></audio>
+          <button class="btn gris" id="garder">💾 Garder le fichier (${nom})</button>
+        ` : `
+          <p class="sous">⏹ <b>Arrête ton enregistreur maintenant</b> et renomme
+          le fichier <b>${nom}</b> — ce sera plus simple à retrouver sur l'ordinateur.</p>`}
+      </div>
+      <button class="btn" id="suivante">${S.numero < 2 ? "Tâche " + (S.numero + 2) + " ›" : "🏁 Terminer"}</button>
+      <button class="btn gris" id="refaire">🔁 Refaire cette tâche</button>`;
+  }
+
+  return `
+    <header>
+      <button class="retour" id="retour">←</button>
+      <h1>Tâche ${S.numero + 1} — ${echapper(t.titre)}</h1>
+    </header>
+    ${corps}`;
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function brancher() {
+  const clic = (sel, f) => { const e = $(sel); if (e) e.onclick = f; };
+
+  document.querySelectorAll("[data-combi]").forEach(b => {
+    b.onclick = () => { S.combi = +b.dataset.combi; S.numero = 0; ouvrirTache(); };
+  });
+  document.querySelectorAll("[data-solo]").forEach(b => {
+    b.onclick = () => { S.numero = +b.dataset.solo; ouvrirTache(); };
+  });
+
+  clic("#go", commencer);
+  clic("#parler", enregistrer);
+  clic("#stop", arreter);
+  clic("#suivante", suivante);
+  clic("#refaire", () => { S.phase = "pret"; S.notes = ""; libererUrl(); dessiner(); });
+  clic("#garder", garder);
+  clic("#retour", quitter);
+  clic("#retour2", quitter);
+
+  const n = $("#notes");
+  if (n) n.oninput = e => { S.notes = e.target.value; };
+}
+
+function ouvrirTache() {
+  S.ecran = "tache";
+  S.phase = "pret";
+  S.notes = "";
+  S.secondes = 0;
+  libererUrl();
+  dessiner();
+}
+
+async function commencer() {
+  const t = taches(S.combi)[S.numero];
+  await garderEcranAllume();
+  if (t.prep > 0) {
+    S.phase = "prep";
+    S.reste = t.prep;
+    lancerMinuteur();
+    dessiner();
+  } else {
+    enregistrer();
+  }
+}
+
+// Démarre le temps de parole (et le micro, si la page y a droit).
+async function enregistrer() {
+  const t = taches(S.combi)[S.numero];
+  clearInterval(S.minuteur);
+
+  if (PEUT_ENREGISTRER) {
+    try {
+      S.flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      S.morceaux = [];
+      S.rec = new MediaRecorder(S.flux);
+      S.rec.ondataavailable = e => { if (e.data && e.data.size) S.morceaux.push(e.data); };
+      S.rec.onstop = finir;
+      S.rec.start(1000);
+      ecouterNiveau();
+    } catch (e) {
+      // Micro refusé : on continue quand même en mode chrono, plutôt que
+      // de bloquer quelqu'un qui voulait juste s'entraîner.
+      alert("Le micro n'est pas disponible : la page reste un chrono.\n\n" + e.message);
+    }
+  }
+
+  S.phase = "rec";
+  S.reste = t.duree;
+  S.secondes = 0;
+  lancerMinuteur();
+  dessiner();
+}
+
+function lancerMinuteur() {
+  clearInterval(S.minuteur);
+  S.minuteur = setInterval(() => {
+    S.reste--;
+    if (S.phase === "rec") S.secondes++;
+    if (S.reste > 0) { rafraichirChrono(); return; }
+    S.reste = 0;
+    clearInterval(S.minuteur);
+    if (S.phase === "prep") enregistrer();   // enchaînement automatique
+    else arreter();
+  }, 1000);
+}
+
+// Redessiner toute la page chaque seconde ferait perdre le focus du clavier
+// pendant la préparation : on ne retouche que le chrono.
+function rafraichirChrono() {
+  const tps = $(".anneau .tps");
+  if (!tps) { dessiner(); return; }
+  const t = taches(S.combi)[S.numero];
+  const total = S.phase === "prep" ? t.prep : t.duree;
+  const C = 2 * Math.PI * 105;
+  tps.textContent = mmss(S.reste);
+  $(".anneau .trait").style.strokeDashoffset = C * (1 - (total ? S.reste / total : 0));
+  $(".anneau").classList.toggle("urgent", S.reste <= 30);
+}
+
+function arreter() {
+  clearInterval(S.minuteur);
+  if (S.rec && S.rec.state !== "inactive") {
+    S.rec.stop();          // la suite se passe dans finir()
+  } else {
+    S.phase = "fini";
+    relacherEcran();
+    dessiner();
+  }
+}
+
+function finir() {
+  const blob = new Blob(S.morceaux, { type: S.rec.mimeType || "audio/webm" });
+  S.morceaux = [];
+  libererUrl();
+  if (blob.size) S.url = URL.createObjectURL(blob);
+  S.blob = blob;
+  arreterMicro();
+  relacherEcran();
+  S.phase = "fini";
+  dessiner();
+}
+
+// « Garder » = téléchargement : le fichier tombe dans les Téléchargements
+// du téléphone, prêt à être importé sur l'ordinateur.
+function garder() {
+  if (!S.blob) return;
+  const ext = (S.blob.type.indexOf("ogg") !== -1) ? "ogg" : "webm";
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  const jour = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(S.blob);
+  a.download = `oral-${S.combi + 1}_tache-${S.numero + 1}_${jour}.${ext}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+function suivante() {
+  if (S.phase === "fini") S.faites.push({ combi: S.combi, numero: S.numero });
+  libererUrl();
+  if (S.numero < 2) { S.numero++; ouvrirTache(); }
+  else quitter();
+}
+
+function quitter() {
+  if (S.phase === "rec" && !confirm("Tu es en train de parler. Quitter maintenant ?")) return;
+  clearInterval(S.minuteur);
+  arreterMicro();
+  relacherEcran();
+  libererUrl();
+  S.ecran = "accueil";
+  S.phase = "pret";
+  dessiner();
+}
+
+// ---------- Micro ----------
+function ecouterNiveau() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx || !S.flux) return;
+  S.ctx = new Ctx();
+  S.analyseur = S.ctx.createAnalyser();
+  S.analyseur.fftSize = 512;
+  S.ctx.createMediaStreamSource(S.flux).connect(S.analyseur);
+  const donnees = new Uint8Array(S.analyseur.fftSize);
+  const boucle = () => {
+    S.analyseur.getByteTimeDomainData(donnees);
+    let max = 0;
+    for (let i = 0; i < donnees.length; i++) {
+      const v = Math.abs(donnees[i] - 128);
+      if (v > max) max = v;
+    }
+    S.niveau = S.niveau + (Math.min(1, max / 55) - S.niveau) * 0.4;
+    const barres = document.querySelectorAll(".vu > div");
+    barres.forEach((b, i) => {
+      const forme = 0.45 + 0.55 * Math.sin((i / (barres.length - 1)) * Math.PI);
+      b.style.height = Math.max(3, Math.round(3 + S.niveau * 30 * forme)) + "px";
+      b.classList.toggle("on", S.niveau > 0.08);
+    });
+    S.anim = requestAnimationFrame(boucle);
+  };
+  boucle();
+}
+
+function arreterMicro() {
+  if (S.anim) { cancelAnimationFrame(S.anim); S.anim = null; }
+  if (S.ctx) { S.ctx.close().catch(() => {}); S.ctx = null; }
+  if (S.flux) { S.flux.getTracks().forEach(p => p.stop()); S.flux = null; }
+  S.analyseur = null;
+  S.niveau = 0;
+}
+
+function libererUrl() {
+  if (S.url) { URL.revokeObjectURL(S.url); S.url = ""; }
+  S.blob = null;
+}
+
+// ---------- Écran ----------
+// Un chrono de 4 min 30 ne sert à rien si l'écran s'éteint au bout d'une minute.
+async function garderEcranAllume() {
+  try {
+    if (navigator.wakeLock) S.veille = await navigator.wakeLock.request("screen");
+  } catch (e) { /* refusé ou indisponible : tant pis, ce n'est pas bloquant */ }
+}
+function relacherEcran() {
+  if (S.veille) { S.veille.release().catch(() => {}); S.veille = null; }
+}
+// Revenir sur l'onglet après l'avoir quitté perd le verrou : on le reprend.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && S.ecran === "tache"
+      && (S.phase === "prep" || S.phase === "rec")) garderEcranAllume();
+});
+
+dessiner();
+</script>
+</body>
+</html>

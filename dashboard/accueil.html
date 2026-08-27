@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mon entraînement TCF Canada</title>
+<link rel="stylesheet" href="style_commun.css">
+<style>
+  .hero{margin:8px 0 26px}
+  .hero h1{font-size:28px}
+  .hero .sous{font-size:15px;margin-bottom:0}
+  .jour{display:inline-block;margin-top:12px;background:var(--bleu-clair);
+    color:var(--bleu);border:1px solid var(--bleu-bord);border-radius:999px;
+    padding:5px 14px;font-size:13px;font-weight:600}
+  .grille{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .tuile{display:flex;flex-direction:column;text-decoration:none;color:inherit;
+    background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+    padding:22px;transition:border-color .15s,box-shadow .15s,transform .05s}
+  .tuile:hover{border-color:var(--bleu-bord);box-shadow:0 4px 14px rgba(37,99,235,.1)}
+  .tuile:active{transform:translateY(1px)}
+  .ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;font-size:24px;margin-bottom:14px}
+  .i-ecrit{background:#ecfeff;color:#0891b2}
+  .i-oral{background:var(--bleu-clair);color:var(--bleu)}
+  .i-co{background:var(--violet-clair);color:var(--violet)}
+  .i-prep{background:#fef3c7;color:#b45309}
+  .tuile h2{font-size:17px;font-weight:600;margin-bottom:4px}
+  .tuile p{font-size:13px;color:var(--gris);flex:1}
+  .tag{margin-top:14px;font-size:12px;font-weight:600;color:var(--bleu);
+    display:flex;align-items:center;gap:6px}
+  .soon{color:var(--gris-clair)}
+  .tuile.off{cursor:default}
+  .tuile.off:hover{border-color:var(--bord);box-shadow:none}
+  .pied{margin-top:24px;font-size:12px;color:var(--gris-clair);text-align:center}
+  @media(max-width:560px){.grille{grid-template-columns:1fr}.hero h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>Mon entraînement TCF Canada</h1>
+    <p class="sous">Tous mes simulateurs au même endroit.</p>
+    <div class="jour" id="compte">—</div>
+  </div>
+
+  <div class="grille">
+    <a class="tuile" href="/index.html">
+      <div class="ico i-ecrit">✍️</div>
+      <h2>Expression écrite</h2>
+      <p>Rédige les 3 tâches, correction par Claude avec note et conseils.</p>
+      <span class="tag">Ouvrir le simulateur →</span>
+    </a>
+
+    <a class="tuile" href="/simulateur_oral.html">
+      <div class="ico i-co">🎧</div>
+      <h2>Compréhension orale</h2>
+      <p>39 questions, format d'examen (~35 min), banque de 837 questions sans répétition.</p>
+      <span class="tag">Commencer une simulation →</span>
+    </a>
+
+    <a class="tuile" href="/expression_orale.html">
+      <div class="ico i-oral">🎤</div>
+      <h2>Expression orale</h2>
+      <p>Génère le prompt exact pour t'entraîner en voix avec ChatGPT. Sujet copié mot pour mot.</p>
+      <span class="tag">Générer un prompt →</span>
+    </a>
+
+    <div class="tuile off">
+      <div class="ico i-prep">📚</div>
+      <h2>Compréhension écrite</h2>
+      <p>Séries de quiz de lecture. Le matériel est déjà téléchargé, le simulateur reste à faire.</p>
+      <span class="tag soon">Bientôt</span>
+    </div>
+  </div>
+
+  <div class="pied">Tout tourne en local sur ta machine. Examen : 27 septembre 2026.</div>
+</div>
+
+<script>
+(function(){
+  // Compte à rebours jusqu'à l'examen.
+  const examen = new Date(2026, 8, 27);            // 27 septembre 2026
+  const jours = Math.ceil((examen - new Date()) / 86400000);
+  const el = document.getElementById("compte");
+  el.textContent = jours > 0
+    ? "J−" + jours + " avant l'examen"
+    : (jours === 0 ? "C'est aujourd'hui — bonne chance !" : "Examen passé");
+})();
+</script>
+</body>
+</html>

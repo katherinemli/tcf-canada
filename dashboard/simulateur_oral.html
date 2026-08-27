@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur TCF — Compréhension Orale</title>
+<style>
+  :root{
+    --bleu:#2563eb; --bleu-clair:#eff6ff; --bleu-bord:#bfdbfe;
+    --texte:#111827; --gris:#6b7280; --gris-clair:#9ca3af;
+    --bord:#e5e7eb; --fond:#f8fafc; --carte:#ffffff;
+    --vert:#059669; --vert-fond:#ecfdf5; --vert-bord:#a7f3d0;
+    --rouge:#dc2626; --rouge-fond:#fef2f2; --rouge-bord:#fecaca;
+    --ambre:#d97706;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fond); color:var(--texte);
+    padding:16px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:800px;margin:0 auto}
+  .cache{display:none !important}
+
+  /* ---------- barre du haut ---------- */
+  .entete{display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;margin-bottom:14px}
+  .entete a{color:var(--bleu);text-decoration:none;cursor:pointer}
+  .entete a:hover{text-decoration:underline}
+  .entete .titre{color:var(--texte);font-weight:500}
+
+  /* ---------- grille des numéros ---------- */
+  .grille{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .num{width:34px;height:34px;border-radius:8px;border:1px solid var(--bord);
+    background:#fff;color:var(--gris);font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s,color .15s}
+  .num.faite{background:var(--bleu-clair);border-color:var(--bleu-bord);color:var(--bleu)}
+  .num.vide{background:#f3f4f6;border-color:var(--bord);color:var(--gris-clair)}
+  .num.active{background:var(--bleu);border-color:var(--bleu);color:#fff;font-weight:600}
+
+  .chrono{font-size:13px;color:var(--gris);margin-bottom:16px}
+  .chrono b{color:var(--texte);font-variant-numeric:tabular-nums}
+  .chrono.urgent b{color:var(--rouge)}
+
+  /* ---------- carte ---------- */
+  .carte{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
+    padding:26px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .carte + .carte{margin-top:16px}
+  .q-titre{font-size:20px;font-weight:600}
+  .q-sous{font-size:13px;color:var(--gris);margin-top:2px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .q-id{color:var(--ambre)}
+  .points{display:inline-flex;gap:4px}
+  .pt{width:6px;height:6px;border-radius:50%;background:#e5e7eb}
+  .pt.on{background:var(--bleu)}
+  .cefr{margin-left:4px;font-size:11px;font-weight:700;color:var(--bleu);
+    letter-spacing:.02em}
+  .consigne{margin:18px 0;font-size:15px}
+  .illus{display:block;max-width:100%;margin:0 auto 18px;border-radius:6px}
+
+  /* ---------- zone audio ---------- */
+  .audio{background:#f3f4f6;border-radius:10px;padding:14px 16px;margin-bottom:18px}
+  .audio-tete{display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;color:var(--gris);margin-bottom:10px}
+  .audio-etat{display:flex;align-items:center;gap:8px;font-weight:500;color:var(--texte)}
+  .pastille{width:9px;height:9px;border-radius:50%;background:var(--bleu);
+    animation:pulse 1.1s ease-in-out infinite}
+  .pastille.repondre{background:var(--ambre);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .barre{height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+  .barre span{display:block;height:100%;width:0;background:var(--bleu);
+    border-radius:3px;transition:width .2s linear}
+  .barre.repondre span{background:var(--ambre);transition:width .95s linear}
+  .temps{font-variant-numeric:tabular-nums;font-size:12px;color:var(--gris)}
+
+  /* ---------- options ---------- */
+  .options{display:flex;flex-direction:column;gap:10px}
+  .opt{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;
+    background:#fff;border:1px solid var(--bord);border-radius:10px;
+    padding:16px 18px;font-size:15px;font-family:inherit;color:var(--texte);
+    cursor:pointer;transition:border-color .12s,background .12s}
+  .opt:hover{border-color:var(--bleu-bord);background:#fafbff}
+  .opt.choisie{border-color:var(--bleu);background:var(--bleu-clair);
+    box-shadow:inset 0 0 0 1px var(--bleu)}
+  .opt .lettre{font-weight:600;color:var(--bleu);min-width:18px}
+
+  .pied{margin-top:18px;display:flex;justify-content:space-between;
+    align-items:center;font-size:13px;color:var(--gris-clair)}
+
+  /* ---------- boutons ---------- */
+  .btn{background:var(--bleu);color:#fff;border:none;border-radius:9px;
+    padding:12px 22px;font-size:15px;font-weight:500;font-family:inherit;
+    cursor:pointer}
+  .btn:hover{background:#1d4ed8}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.secondaire{background:#fff;color:var(--texte);border:1px solid var(--bord)}
+  .btn.secondaire:hover{background:#f9fafb}
+  .btn.mini{padding:7px 13px;font-size:13px}
+
+  /* ---------- accueil ---------- */
+  .accueil h1{font-size:24px;font-weight:600;margin-bottom:6px}
+  .accueil .sous{color:var(--gris);font-size:14px;margin-bottom:22px}
+
+  .jauge-tete{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:var(--gris);margin-bottom:7px}
+  .jauge-tete b{color:var(--texte);font-size:15px;font-variant-numeric:tabular-nums}
+  .jauge{height:9px;background:#eef2f7;border-radius:5px;overflow:hidden}
+  .jauge span{display:block;height:100%;background:var(--bleu);border-radius:5px}
+  .jauge-note{font-size:12px;color:var(--gris-clair);margin-top:8px}
+  .restant{margin-top:18px;padding:14px 16px;border-radius:10px;
+    background:var(--bleu-clair);border:1px solid var(--bleu-bord);
+    color:#1e40af;font-size:14px}
+  .restant.bas{background:#fffbeb;border-color:#fde68a;color:#92400e}
+
+  .regles{list-style:none;display:flex;flex-direction:column;gap:11px;
+    margin:24px 0;font-size:15px}
+  .regles li{display:flex;gap:11px;align-items:flex-start}
+  .regles .ic{flex-shrink:0;width:22px;text-align:center}
+  .reglages{display:flex;flex-wrap:wrap;gap:22px;padding:16px 0;
+    border-top:1px solid var(--bord);border-bottom:1px solid var(--bord);
+    margin-bottom:24px;font-size:14px}
+  .reglage label{display:block;color:var(--gris);font-size:12px;
+    text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px}
+  select{font-family:inherit;font-size:14px;padding:7px 10px;
+    border:1px solid var(--bord);border-radius:8px;background:#fff;color:var(--texte)}
+
+  /* ---------- historique ---------- */
+  .hist-t{font-size:15px;font-weight:600;margin-bottom:4px}
+  .hist-s{font-size:13px;color:var(--gris);margin-bottom:16px}
+  .hist{display:flex;flex-direction:column;gap:8px}
+  .hist-l{display:flex;align-items:center;gap:14px;padding:11px 14px;
+    border:1px solid var(--bord);border-radius:9px;font-size:14px;background:#fff}
+  .hist-date{color:var(--gris);font-size:13px;min-width:112px}
+  .hist-score{font-weight:600;font-variant-numeric:tabular-nums;min-width:52px}
+  .hist-niv{color:var(--bleu);font-size:13px;flex:1}
+  .hist-duree{color:var(--gris-clair);font-size:12px;
+    font-variant-numeric:tabular-nums}
+  .hist-vide{color:var(--gris-clair);font-size:14px;padding:6px 0}
+  .hist-x{background:none;border:none;font-family:inherit;font-size:16px;
+    line-height:1;color:var(--gris-clair);cursor:pointer;padding:4px 6px;
+    border-radius:6px;flex-shrink:0}
+  .hist-x:hover{background:var(--rouge-fond);color:var(--rouge)}
+  .lien{color:var(--bleu);cursor:pointer;text-decoration:underline}
+  .lien.danger{color:var(--rouge)}
+
+  /* ---------- résultat ---------- */
+  .score-tete{text-align:center;padding:10px 0 26px}
+  .score-gros{font-size:52px;font-weight:600;line-height:1.1;
+    font-variant-numeric:tabular-nums}
+  .score-sur{font-size:26px;color:var(--gris-clair);font-weight:400}
+  .score-niv{display:inline-block;margin-top:12px;background:var(--bleu-clair);
+    color:var(--bleu);border:1px solid var(--bleu-bord);border-radius:999px;
+    padding:6px 16px;font-size:14px;font-weight:600}
+  .score-points{font-size:14px;color:var(--gris);margin-top:8px;
+    font-variant-numeric:tabular-nums}
+  .score-note{font-size:12px;color:var(--gris-clair);margin-top:10px}
+
+  .niveaux{display:flex;flex-direction:column;gap:9px;margin:22px 0 6px}
+  .niv-ligne{display:flex;align-items:center;gap:12px;font-size:13px}
+  .niv-nom{width:118px;color:var(--gris);flex-shrink:0}
+  .niv-barre{flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+  .niv-barre span{display:block;height:100%;background:var(--bleu);border-radius:4px}
+  .niv-chiffre{width:52px;text-align:right;color:var(--gris);
+    font-variant-numeric:tabular-nums;flex-shrink:0}
+
+  .filtres{display:flex;gap:8px;margin:26px 0 14px;flex-wrap:wrap}
+  .revue{display:flex;flex-direction:column;gap:12px}
+  .rev{border:1px solid var(--bord);border-radius:10px;background:#fff;
+    overflow:hidden}
+  .rev.faux{border-color:var(--rouge-bord)}
+  .rev-tete{display:flex;align-items:center;gap:12px;padding:13px 16px;
+    cursor:pointer;user-select:none}
+  .rev-tete:hover{background:#fafafa}
+  .rev-n{font-weight:600;font-size:14px;min-width:34px;
+    font-variant-numeric:tabular-nums}
+  .rev-marque{width:22px;font-size:15px;text-align:center;flex-shrink:0}
+  .rev.bon .rev-marque{color:var(--vert)}
+  .rev.faux .rev-marque{color:var(--rouge)}
+  .rev-titre{flex:1;font-size:14px;color:var(--texte)}
+  .rev-reps{font-size:12px;color:var(--gris);
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rev-corps{padding:0 16px 16px;border-top:1px solid #f3f4f6;
+    display:flex;flex-direction:column;gap:13px}
+  .rev-corps.cache{display:none}
+  .bloc-t{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--gris-clair);margin:13px 0 5px}
+  .trans{font-size:14px;background:#f9fafb;border-radius:8px;padding:13px 15px;
+    border:1px solid #f3f4f6;white-space:pre-wrap}
+  .rev-opts{display:flex;flex-direction:column;gap:6px;font-size:14px}
+  .rev-opt{padding:9px 13px;border-radius:7px;border:1px solid transparent;
+    display:flex;gap:10px}
+  .rev-opt .l{font-weight:600;min-width:18px}
+  .rev-opt.correcte{background:var(--vert-fond);border-color:var(--vert-bord);
+    color:#065f46}
+  .rev-opt.mienne{background:var(--rouge-fond);border-color:var(--rouge-bord);
+    color:#991b1b}
+  .rev-audio{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .rev-audio audio{height:34px;flex:1;min-width:200px}
+  .rev-audio .etiq{font-size:12px;color:var(--gris);min-width:64px}
+  .mots{display:flex;flex-wrap:wrap;gap:6px}
+  .mot{background:#f3f4f6;border-radius:999px;padding:3px 11px;
+    font-size:12px;color:var(--gris)}
+
+  .erreur{background:var(--rouge-fond);border:1px solid var(--rouge-bord);
+    color:#991b1b;padding:14px 16px;border-radius:10px;font-size:14px;
+    margin-top:16px}
+  .erreur code{background:#fff;padding:1px 6px;border-radius:4px;
+    font-size:13px;display:inline-block;margin:2px 0}
+  .avis{background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+    padding:11px 14px;border-radius:9px;font-size:13px;margin-top:16px}
+
+  @media(max-width:520px){
+    body{padding:10px}
+    .carte{padding:18px}
+    .num{width:30px;height:30px;font-size:12px}
+    .score-gros{font-size:42px}
+    .niv-nom{width:88px}
+    .hist-date{min-width:auto}
+    .hist-niv{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ ACCUEIL ============ -->
+  <section id="ecran-accueil">
+    <div class="entete"><a href="/">← Accueil</a><span class="titre">Compréhension orale</span></div>
+
+    <div class="carte accueil">
+      <h1 id="acc-titre">Nouvelle simulation</h1>
+      <p class="sous" id="acc-sous">Chargement de la banque…</p>
+
+      <div id="acc-progres" class="cache">
+        <div class="jauge-tete">
+          <span>Questions déjà entendues</span>
+          <b><span id="acc-vues">0</span> / <span id="acc-total">0</span></b>
+        </div>
+        <div class="jauge"><span id="acc-jauge" style="width:0%"></span></div>
+        <div class="jauge-note" id="acc-note"></div>
+        <div class="restant" id="acc-restant"></div>
+      </div>
+
+      <ul class="regles">
+        <li><span class="ic">▶</span><span>Chaque enregistrement est joué <b>une seule fois</b>, automatiquement.</span></li>
+        <li><span class="ic">⏱</span><span>À la fin de l'audio, un temps de réponse <b>calculé pour chaque question</b> (plus long quand il y a plus à lire), puis la suivante démarre seule.</span></li>
+        <li><span class="ic">→</span><span>Impossible de revenir en arrière ni de réécouter.</span></li>
+        <li><span class="ic">✓</span><span>Les réponses et les transcriptions n'apparaissent qu'<b>à la fin</b>.</span></li>
+      </ul>
+
+      <div class="reglages">
+        <div class="reglage">
+          <label for="sel-rythme">Rythme</label>
+          <select id="sel-rythme">
+            <option value="2100" selected>TCF ~35 min</option>
+            <option value="2400">TCF ~40 min</option>
+            <option value="f8">Pause fixe 8 s</option>
+            <option value="f12">Pause fixe 12 s</option>
+            <option value="f20">Pause fixe 20 s</option>
+          </select>
+        </div>
+        <div class="reglage">
+          <label for="sel-piste">Source audio</label>
+          <select id="sel-piste">
+            <option value="ameliore" selected>Amélioré</option>
+            <option value="original">Original</option>
+          </select>
+        </div>
+        <div class="reglage" id="bloc-tirage">
+          <label for="sel-tirage">Questions</label>
+          <select id="sel-tirage">
+            <option value="neuves" selected>Jamais entendues</option>
+            <option value="ratees">Celles que je rate</option>
+            <option value="hasard">Au hasard</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn" id="btn-start" disabled>Commencer</button>
+      <div id="acc-message"></div>
+    </div>
+
+    <div class="carte" id="bloc-historique">
+      <div class="hist-t">Mes simulations</div>
+      <div class="hist-s" id="hist-resume">—</div>
+      <div class="hist" id="hist"></div>
+    </div>
+  </section>
+
+  <!-- ============ TEST ============ -->
+  <section id="ecran-test" class="cache">
+    <div class="entete">
+      <a id="lien-quitter">← Quitter</a>
+      <span class="titre" id="test-nom"></span>
+    </div>
+    <div class="grille" id="grille"></div>
+    <div class="chrono" id="chrono"></div>
+
+    <div class="carte">
+      <div>
+        <div class="q-titre" id="q-titre">Question 1</div>
+        <div class="q-sous">
+          <span><span class="q-id" id="q-id"></span> <span id="q-nom"></span></span>
+          <span class="points" id="q-points"></span>
+        </div>
+      </div>
+
+      <p class="consigne" id="q-consigne"></p>
+      <img class="illus cache" id="q-image" alt="">
+
+      <div class="audio">
+        <div class="audio-tete">
+          <span class="audio-etat"><span class="pastille" id="pastille"></span><span id="audio-etat">Préparation…</span></span>
+          <span class="temps" id="audio-temps"></span>
+        </div>
+        <div class="barre" id="barre"><span id="barre-jauge"></span></div>
+      </div>
+
+      <div class="options" id="options"></div>
+      <div class="pied">
+        <span id="pied-info">Tu peux répondre pendant l'écoute.</span>
+        <span id="pied-reste"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RÉSULTAT ============ -->
+  <section id="ecran-resultat" class="cache">
+    <div class="entete">
+      <a id="lien-retour">← Accueil</a>
+      <span class="titre">Résultat</span>
+    </div>
+
+    <div class="carte">
+      <div class="score-tete">
+        <div class="score-gros"><span id="res-score">0</span><span class="score-sur">/<span id="res-total">39</span></span></div>
+        <div class="score-niv" id="res-niveau">—</div>
+        <div class="score-points" id="res-points"></div>
+        <div class="score-note">Chaque question compte selon sa difficulté, comme au TCF
+          (une C2 vaut six fois une A1). Estimation : le vrai barème n'est pas public.</div>
+        <div id="res-sauve"></div>
+      </div>
+
+      <div class="bloc-t">Résultat par niveau de difficulté</div>
+      <div class="niveaux" id="res-niveaux"></div>
+
+      <div class="filtres">
+        <button class="btn secondaire mini" data-filtre="tout">Tout (<span id="n-tout">0</span>)</button>
+        <button class="btn mini" data-filtre="faux">Erreurs (<span id="n-faux">0</span>)</button>
+        <button class="btn secondaire mini" data-filtre="vide">Sans réponse (<span id="n-vide">0</span>)</button>
+      </div>
+      <div class="revue" id="revue"></div>
+    </div>
+  </section>
+
+</div>
+
+<audio id="lecteur" preload="auto"></audio>
+
+<script>
+(function(){
+"use strict";
+
+/* ================================================================ état */
+const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
+const TEST_FIXE = params.get("test");          // ?test=148-1-O → un test précis
+const BASE = TEST_FIXE ? "tests/" + TEST_FIXE + "/" : "banque/";
+
+/* Structure d'un vrai TCF : 39 questions, difficulté croissante.
+   Vérifié sur les 65 tests du site — la répartition ne bouge jamais. */
+const STRUCTURE = {1:4, 2:6, 3:9, 4:10, 5:6, 6:4};
+const LETTRES = ["A","B","C","D"];
+/* Le TCF classe en 6 paliers de difficulté qui correspondent exactement aux
+   niveaux CECRL. Vérifié en croisant 353 questions communes à deux sources. */
+const CEFR = {1:"A1", 2:"A2", 3:"B1", 4:"B2", 5:"C1", 6:"C2"};
+
+let banque = [];        // toutes les questions disponibles
+let vues = {};          // id -> {fois, juste}
+let questions = [];     // les 39 tirées pour cette simulation
+let reponses = [];
+let pauses = [];        // secondes de réponse calculées pour chaque question
+let idx = 0;
+let rythme = "2100", piste = "ameliore", tirage = "neuves";
+let dureeTotale = 0;    // durée prévue de la simulation (audio + pauses), en s
+let debutMs = 0;
+let tGlobal = null, tPhase = null, tRAF = null;
+let phase = "";
+let serveurOk = false;      // les endpoints /co/* répondent-ils ?
+let archiveCourante = null; // nom du fichier de la simulation qu'on vient de finir
+const lecteur = $("#lecteur");
+const precharge = new Map();
+
+/* ============================================================ chargement */
+Promise.all([
+  fetch(BASE + (TEST_FIXE ? "test.json" : "questions_O.json"))
+    .then(r => { if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); }),
+  chargerVues(),
+]).then(([d]) => {
+  banque = d.questions;
+  vues = window.__vues || {};
+
+  if(TEST_FIXE){
+    $("#acc-titre").textContent = "Test " + d.number + " – Compréhension Orale";
+    $("#acc-sous").textContent = d.questions.length + " questions, dans l'ordre du site.";
+    $("#bloc-tirage").classList.add("cache");
+  } else {
+    $("#acc-sous").textContent =
+      d.total + " questions uniques, extraites de " + d.testsSources
+      + " tests (le site en sert " + d.questionsServies + ", soit "
+      + (d.questionsServies / d.total).toFixed(1) + " fois la même).";
+    majProgres();
+  }
+  $("#btn-start").disabled = false;
+  chargerHistorique();
+}).catch(e => {
+  $("#acc-sous").textContent = "";
+  $("#acc-message").innerHTML =
+    '<div class="erreur"><b>Impossible de charger la banque.</b><br>' + e.message
+    + '<br><br>Lance le serveur depuis le dossier du projet :<br>'
+    + '<code>python3 serveur_eval.py</code><br>'
+    + 'puis ouvre <code>http://localhost:8777/simulateur_oral.html</code></div>';
+});
+
+/** Historique des questions déjà entendues. Le serveur est la source de
+ *  vérité ; sans lui on retombe sur le stockage du navigateur. */
+function chargerVues(){
+  return fetch("/co/vues")
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => { serveurOk = true; window.__vues = d.vues || {}; })
+    .catch(() => {
+      serveurOk = false;
+      try { window.__vues = JSON.parse(localStorage.getItem("tcf_vues") || "{}"); }
+      catch(e){ window.__vues = {}; }
+    });
+}
+
+function majProgres(){
+  const total = banque.length;
+  const n = banque.filter(q => vues[q.id]).length;
+  $("#acc-progres").classList.remove("cache");
+  $("#acc-vues").textContent = n;
+  $("#acc-total").textContent = total;
+  $("#acc-jauge").style.width = (n / total * 100) + "%";
+  $("#acc-note").textContent = (total - n) + " questions encore jamais entendues.";
+
+  // Combien de simulations complètes reste-t-il ? Le niveau le plus pauvre décide.
+  let mini = Infinity, limitant = 1;
+  for(const niv of [1,2,3,4,5,6]){
+    const libres = banque.filter(q => q.niveau === +niv && !vues[q.id]).length;
+    const n2 = Math.floor(libres / STRUCTURE[niv]);
+    if(n2 < mini){ mini = n2; limitant = niv; }
+  }
+  const el = $("#acc-restant");
+  el.classList.toggle("bas", mini <= 3);
+  el.innerHTML = mini > 0
+    ? "<b>" + mini + " simulation" + (mini > 1 ? "s" : "")
+      + "</b> encore possible" + (mini > 1 ? "s" : "")
+      + " sans réentendre un seul audio <span style='opacity:.7'>(limite : niveau "
+      + limitant + ")</span>."
+    : "Toutes les questions ont été entendues au moins une fois — "
+      + "le tirage « Jamais entendues » repassera sur les moins vues.";
+}
+
+/* ============================================================ historique */
+function chargerHistorique(){
+  if(TEST_FIXE){ $("#bloc-historique").classList.add("cache"); return; }
+  fetch("/co/historique")
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => afficherHistorique(d.simulations || []))
+    .catch(() => {
+      $("#hist-resume").textContent =
+        "Serveur non détecté — l'historique reste dans ce navigateur seulement.";
+      let h = [];
+      try { h = JSON.parse(localStorage.getItem("tcf_historique") || "[]"); }
+      catch(e){}
+      afficherHistorique(h.reverse(), true);
+    });
+}
+
+function afficherHistorique(liste, local){
+  const box = $("#hist");
+  box.innerHTML = "";
+  if(!liste.length){
+    box.innerHTML = '<div class="hist-vide">Aucune simulation pour l\'instant.</div>';
+    if(!local) $("#hist-resume").textContent = "Ton historique s'affichera ici.";
+    return;
+  }
+  if(!local){
+    const moy = liste.reduce((s,f) => s + (f.score||0)/(f.total||39), 0) / liste.length;
+    $("#hist-resume").textContent =
+      liste.length + " simulation" + (liste.length>1?"s":"")
+      + " · moyenne " + Math.round(moy*39) + "/39 (" + Math.round(moy*100) + " %)";
+  }
+  liste.slice(0, 12).forEach(f => {
+    const l = document.createElement("div");
+    l.className = "hist-l";
+    l.innerHTML =
+      '<span class="hist-date">' + (f.date||"").replace("T"," ").slice(0,16) + '</span>'
+      + '<span class="hist-score">' + (f.score||0) + "/" + (f.total||39) + '</span>'
+      + '<span class="hist-niv">' + niveauFiche(f).niveau + '</span>'
+      + '<span class="hist-duree">' + (f.duree ? Math.round(f.duree/60) + " min" : "") + '</span>';
+
+    const x = document.createElement("button");
+    x.className = "hist-x";
+    x.textContent = "×";
+    x.title = "Supprimer et rendre les questions à la banque";
+    x.addEventListener("click", () => {
+      const n = (f.questions || []).length;
+      if(!confirm("Supprimer cette simulation ?\n\nSes " + n
+                  + " questions redeviendront disponibles pour un prochain tirage."))
+        return;
+      supprimerFiche(f.fichier || f.cle).then(ok => {
+        if(ok) rafraichir();
+        else alert("Suppression impossible.");
+      });
+    });
+    l.appendChild(x);
+    box.appendChild(l);
+  });
+}
+
+/** Supprime une simulation archivée, côté serveur et côté navigateur.
+ *  Comme « questions_vues » est recalculé à partir des fichiers restants,
+ *  effacer une simulation rend automatiquement ses questions à la banque. */
+function supprimerFiche(ref){
+  // La copie locale part dans tous les cas, sinon elle ressusciterait le
+  // compteur des questions vues au prochain chargement hors ligne.
+  try {
+    const h = JSON.parse(localStorage.getItem("tcf_historique") || "[]")
+              .filter(f => f.cle !== ref && f.fichier !== ref);
+    localStorage.setItem("tcf_historique", JSON.stringify(h));
+    const v = {};
+    h.forEach(f => (f.questions || []).forEach(r => {
+      const e = v[r.id] = v[r.id] || {fois:0, juste:0};
+      e.fois++; if(r.juste) e.juste++;
+    }));
+    localStorage.setItem("tcf_vues", JSON.stringify(v));
+  } catch(e){ /* pas de stockage : rien à nettoyer */ }
+
+  if(!serveurOk) return Promise.resolve(true);
+  return fetch("/co/supprimer", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({fichier: ref}),
+  }).then(r => r.json()).then(d => !!d.ok).catch(() => false);
+}
+
+/** Recharge le compteur des questions vues et la liste des simulations. */
+function rafraichir(){
+  return chargerVues().then(() => {
+    vues = window.__vues || {};
+    if(!TEST_FIXE) majProgres();
+    chargerHistorique();
+  });
+}
+
+/* ============================================================ tirage */
+function melanger(a){
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Tire 39 questions en respectant la répartition du vrai examen. */
+function tirer(){
+  const out = [];
+  for(const niv of [1,2,3,4,5,6]){
+    let pool = banque.filter(q => q.niveau === +niv && q.audio);
+    melanger(pool);
+    if(tirage === "neuves"){
+      // Jamais entendues d'abord ; le tri est stable, l'ordre au hasard tient.
+      pool.sort((a,b) => (vues[a.id]?.fois || 0) - (vues[b.id]?.fois || 0));
+    } else if(tirage === "ratees"){
+      // Les plus souvent ratées d'abord ; les jamais vues ferment la marche.
+      const rate = q => {
+        const v = vues[q.id];
+        return v ? v.fois - v.juste : -1;   // -1 : jamais posée
+      };
+      pool.sort((a,b) => rate(b) - rate(a));
+    }
+    out.push(...pool.slice(0, STRUCTURE[niv]));
+  }
+  return out;
+}
+
+/* Répartit le temps de réponse sur les questions tirées.
+   - Modes "TCF ~35/40 min" : le total (audio + pauses) vise la cible. Comme les
+     audios longs (niveaux élevés) mangent déjà le budget, les pauses sont
+     courtes ; elles sont réparties selon ce qu'il y a à LIRE (options), pour que
+     les questions à 4 longues propositions aient plus de temps que celles à
+     image. Plancher et plafond gardent chaque pause jouable.
+   - Modes "Pause fixe" : la même pause partout. */
+function planifier(qs){
+  const n = qs.length;
+  if(rythme[0] === "f"){                         // "f8", "f12", "f20"
+    const p = +rythme.slice(1);
+    return qs.map(() => p);
+  }
+  const cible = +rythme;                          // 2100 (35 min) ou 2400 (40)
+  const audio = qs.reduce((s, q) => s + (q.duree || 20), 0);
+  const MIN = 4, MAX = 22;
+  // ~13 caractères d'options ≈ 1 s de lecture pour un lecteur A2-B1 ;
+  // +3 s de réflexion même sans texte (questions à image).
+  const poids = qs.map(q => 3 + (q.charge || 0) / 13);
+  const budget = Math.max(cible - audio, n * MIN);
+
+  // Water-filling : pause_i = borne(k · poids_i). On cherche k pour que la somme
+  // des pauses = budget. f(k) est croissante, donc recherche binaire.
+  const f = k => qs.reduce((s, _, i) =>
+    s + Math.min(MAX, Math.max(MIN, k * poids[i])), 0);
+  let lo = 0, hi = MAX / Math.min(...poids) + 1;
+  for(let it = 0; it < 40; it++){
+    const k = (lo + hi) / 2;
+    if(f(k) < budget) lo = k; else hi = k;
+  }
+  const k = (lo + hi) / 2;
+  return qs.map((_, i) => Math.round(Math.min(MAX, Math.max(MIN, k * poids[i]))));
+}
+
+/* ============================================================ démarrage */
+$("#btn-start").addEventListener("click", () => {
+  rythme = $("#sel-rythme").value;
+  piste  = $("#sel-piste").value;
+  tirage = $("#sel-tirage").value;
+
+  questions = TEST_FIXE ? banque.slice() : tirer();
+  if(!questions.length){
+    $("#acc-message").innerHTML =
+      '<div class="erreur">Aucune question jouable trouvée.</div>';
+    return;
+  }
+  reponses = new Array(questions.length).fill(null);
+  pauses = planifier(questions);
+  dureeTotale = questions.reduce((s, q) => s + (q.duree || 20), 0)
+              + pauses.reduce((a, b) => a + b, 0);
+  idx = 0;
+  debutMs = Date.now();
+
+  $("#test-nom").textContent = TEST_FIXE
+    ? "Test " + TEST_FIXE : "Simulation — " + questions.length + " questions";
+  $("#ecran-accueil").classList.add("cache");
+  $("#ecran-test").classList.remove("cache");
+
+  construireGrille();
+  tGlobal = setInterval(majChrono, 1000);
+  majChrono();
+  afficher();
+});
+
+$("#lien-quitter").addEventListener("click", () => {
+  if(confirm("Quitter la simulation ? Les réponses déjà données seront corrigées."))
+    terminer();
+});
+$("#lien-retour").addEventListener("click", () => location.reload());
+
+/* ============================================================ chrono */
+function mmss(s){
+  s = Math.max(0, Math.round(s));
+  return Math.floor(s/60) + " min " + String(s%60).padStart(2,"0") + " s";
+}
+function mmssCourt(s){
+  s = Math.floor(s || 0);
+  return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+}
+function majChrono(){
+  // Le chrono suit la durée planifiée (audio + pauses). Il tombe à zéro juste
+  // quand la dernière pause se termine : il ne peut donc plus couper avant la
+  // fin comme avec l'ancien 35 min fixe.
+  const reste = dureeTotale - (Date.now() - debutMs) / 1000;
+  const el = $("#chrono");
+  el.className = "chrono" + (reste < 300 ? " urgent" : "");
+  el.innerHTML = "Temps restant : <b>" + mmss(Math.max(0, reste)) + "</b>"
+    + ' <span style="opacity:.6">· simulation ≈ ' + Math.round(dureeTotale/60)
+    + ' min</span>';
+}
+
+/* ============================================================ grille */
+function construireGrille(){
+  const g = $("#grille");
+  g.innerHTML = "";
+  questions.forEach((_, i) => {
+    const d = document.createElement("div");
+    d.className = "num";
+    d.textContent = i + 1;
+    g.appendChild(d);
+  });
+}
+function majGrille(){
+  [...$("#grille").children].forEach((el, i) => {
+    el.className = "num"
+      + (i === idx ? " active"
+        : i < idx ? (reponses[i] === null ? " vide" : " faite") : "");
+  });
+}
+
+/* ============================================================ affichage */
+function urlAudio(q){
+  const rel = (piste === "ameliore" && q.audioAmeliore) ? q.audioAmeliore : q.audio;
+  return rel ? BASE + rel : null;
+}
+function texteOption(q, i){
+  return (q.options[i] || "").replace(/^[A-D]\.\s*/, "").trim();
+}
+function aDesTextes(q){
+  return q.options.some((_, i) => texteOption(q, i).length > 0);
+}
+
+function afficher(){
+  const q = questions[idx];
+  majGrille();
+
+  $("#q-titre").textContent    = "Question " + (idx + 1);
+  // Pas de titre ni d'identifiant pendant l'épreuve : « Un bébé et un chien »
+  // trahirait le contenu de la question. Ils réapparaissent dans la correction.
+  $("#q-id").textContent       = "";
+  $("#q-nom").textContent      = "";
+  $("#q-consigne").textContent = q.consigne || "";
+  $("#pied-reste").textContent = (idx + 1) + " / " + questions.length;
+
+  const pts = $("#q-points");
+  pts.innerHTML = "";
+  for(let i = 1; i <= 6; i++){
+    const s = document.createElement("span");
+    s.className = "pt" + (i <= (q.niveau || 0) ? " on" : "");
+    pts.appendChild(s);
+  }
+  const cefr = document.createElement("span");
+  cefr.className = "cefr";
+  cefr.textContent = CEFR[q.niveau] || "";
+  pts.appendChild(cefr);
+
+  const img = $("#q-image");
+  if(q.image){ img.src = BASE + q.image; img.classList.remove("cache"); }
+  else { img.classList.add("cache"); img.removeAttribute("src"); }
+
+  const box = $("#options");
+  box.innerHTML = "";
+  q.options.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.innerHTML = '<span class="lettre">' + LETTRES[i] + ".</span>";
+    const t = texteOption(q, i);
+    if(t){ const s = document.createElement("span"); s.textContent = t; b.appendChild(s); }
+    b.addEventListener("click", () => {
+      reponses[idx] = i;
+      [...box.children].forEach((o, j) => o.classList.toggle("choisie", j === i));
+    });
+    box.appendChild(b);
+  });
+  $("#pied-info").textContent = aDesTextes(q)
+    ? "Tu peux répondre pendant l'écoute."
+    : "Écoute les 4 propositions, puis choisis la lettre.";
+
+  precharger(idx + 1);
+  precharger(idx + 2);
+  jouer();
+}
+
+function precharger(i){
+  if(i >= questions.length) return;
+  const u = urlAudio(questions[i]);
+  if(!u || precharge.has(u)) return;
+  const a = new Audio();
+  a.preload = "auto";
+  a.src = u;
+  precharge.set(u, a);
+}
+
+/* ============================================================ lecture */
+function jouer(){
+  const u = urlAudio(questions[idx]);
+  phase = "ecoute";
+  $("#pastille").className = "pastille";
+  $("#barre").className = "barre";
+  $("#barre-jauge").style.width = "0%";
+
+  if(!u){ phaseReponse(); return; }
+
+  $("#audio-etat").textContent = "Écoute en cours…";
+  lecteur.src = u;
+  lecteur.currentTime = 0;
+
+  const p = lecteur.play();
+  if(p && p.catch) p.catch(() => {
+    $("#audio-etat").innerHTML =
+      '<button class="btn mini" id="btn-secours">▶ Lire l\'audio</button>';
+    $("#btn-secours").addEventListener("click", () => {
+      lecteur.play();
+      $("#audio-etat").textContent = "Écoute en cours…";
+    });
+  });
+
+  cancelAnimationFrame(tRAF);
+  const tick = () => {
+    if(phase !== "ecoute") return;
+    const d = lecteur.duration;
+    if(d && isFinite(d)){
+      $("#barre-jauge").style.width = (lecteur.currentTime / d * 100) + "%";
+      $("#audio-temps").textContent =
+        mmssCourt(lecteur.currentTime) + " / " + mmssCourt(d);
+    }
+    tRAF = requestAnimationFrame(tick);
+  };
+  tRAF = requestAnimationFrame(tick);
+
+  lecteur.onended = phaseReponse;
+  lecteur.onerror = phaseReponse;
+}
+
+function phaseReponse(){
+  if(phase === "reponse") return;
+  phase = "reponse";
+  cancelAnimationFrame(tRAF);
+  lecteur.onended = lecteur.onerror = null;
+
+  $("#pastille").className = "pastille repondre";
+  $("#barre").className = "barre repondre";
+  $("#barre-jauge").style.width = "100%";
+
+  const total = pauses[idx] || 8;
+  let reste = total;
+  const peindre = () => {
+    $("#audio-etat").textContent = "Réponds maintenant";
+    $("#audio-temps").textContent = reste + " s";
+    $("#barre-jauge").style.width = (reste / total * 100) + "%";
+  };
+  peindre();
+
+  clearInterval(tPhase);
+  tPhase = setInterval(() => {
+    reste--;
+    if(reste <= 0){ clearInterval(tPhase); suivante(); }
+    else peindre();
+  }, 1000);
+}
+
+function suivante(){
+  clearInterval(tPhase);
+  if(idx + 1 >= questions.length){ terminer(); return; }
+  idx++;
+  afficher();
+}
+
+/* ============================================================ résultat */
+/* UN SEUL calcul, partout : l'écran de résultat et la liste d'historique
+   passent tous les deux par ici. Avant, chacun avait sa formule et les deux
+   se contredisaient (25/39 affichait « C2 » sur le résultat et « B2 » dans la
+   liste) : un palier était déclaré tenu dès 50 % de réussite, alors qu'avec
+   4 propositions le pur hasard en donne déjà 25 % — 2 bonnes réponses sur 4
+   suffisaient à décrocher un « C2 ».
+
+   Le TCF ne compte pas les bonnes réponses : chaque question pèse selon sa
+   difficulté, et le total se lit sur une échelle de 699 points découpée en
+   tranches de 100 par niveau. On reproduit cette logique — une question C2
+   rapporte six fois plus qu'une question A1. */
+const POIDS = {1:1, 2:2, 3:3, 4:4, 5:5, 6:6};
+const PALIERS = [[600,"C2"], [500,"C1"], [400,"B2"], [300,"B1"], [200,"A2"], [0,"A1"]];
+
+/** Score TCF estimé (0–699) à partir du détail question par question.
+ *  Renvoie null si le détail manque (vieille fiche d'historique). */
+function scoreTCF(questions){
+  let gagne = 0, max = 0;
+  (questions || []).forEach(q => {
+    const p = POIDS[q.niveau];
+    if(!p) return;                       // question sans niveau : hors barème
+    max += p;
+    if(q.juste) gagne += p;
+  });
+  return max ? Math.round(gagne / max * 699) : null;
+}
+
+function niveauDeScore(points){
+  return PALIERS.find(p => points >= p[0])[1];
+}
+
+/** Niveau d'une fiche. Le barème pondéré dès qu'on a le détail ; sinon on
+ *  retombe sur le % global (fiches archivées avant cette version). */
+function niveauFiche(fiche){
+  const points = scoreTCF(fiche.questions);
+  if(points !== null) return {points: points, niveau: niveauDeScore(points)};
+  const pct = (fiche.score || 0) / (fiche.total || 39);
+  return {points: Math.round(pct * 699), niveau: niveauDeScore(pct * 699)};
+}
+
+function terminer(){
+  clearInterval(tGlobal); clearInterval(tPhase);
+  cancelAnimationFrame(tRAF);
+  lecteur.pause(); lecteur.onended = lecteur.onerror = null;
+  phase = "fini";
+
+  $("#ecran-test").classList.add("cache");
+  $("#ecran-resultat").classList.remove("cache");
+
+  const bon = i => reponses[i] !== null && reponses[i] === questions[i].reponse;
+  const total = questions.reduce((n, _, i) => n + (bon(i) ? 1 : 0), 0);
+
+  /* --- par niveau (calculé avant le badge : il en dépend) --- */
+  const parNiv = {};
+  questions.forEach((q, i) => {
+    const n = q.niveau || 0;
+    (parNiv[n] = parNiv[n] || {bon:0, tot:0}).tot++;
+    if(bon(i)) parNiv[n].bon++;
+  });
+
+  $("#res-score").textContent = total;
+  $("#res-total").textContent = questions.length;
+
+  // Exactement le même calcul que la liste d'historique : les deux écrans ne
+  // peuvent plus se contredire, ils appellent la même fonction sur les mêmes
+  // données (niveau + juste, question par question).
+  const bilan = niveauFiche({
+    questions: questions.map((q, i) => ({niveau: q.niveau, juste: bon(i)})),
+    score: total, total: questions.length,
+  });
+  $("#res-niveau").textContent = bilan.niveau;
+  $("#res-points").textContent = "≈ " + bilan.points + " / 699 points";
+
+  const zone = $("#res-niveaux");
+  zone.innerHTML = "";
+  [1,2,3,4,5,6].filter(n => parNiv[n]).forEach(n => {
+    const {bon:b, tot:t} = parNiv[n];
+    const l = document.createElement("div");
+    l.className = "niv-ligne";
+    l.innerHTML =
+      '<span class="niv-nom">' + CEFR[n] + ' <span style="opacity:.5">· niv '
+      + n + '</span></span>'
+      + '<span class="niv-barre"><span style="width:' + (b/t*100) + '%"></span></span>'
+      + '<span class="niv-chiffre">' + b + "/" + t + "</span>";
+    zone.appendChild(l);
+  });
+
+  construireRevue(bon);
+  sauver(total);
+}
+
+function construireRevue(bon){
+  const revue = $("#revue");
+  revue.innerHTML = "";
+  let nFaux = 0, nVide = 0;
+
+  questions.forEach((q, i) => {
+    const juste = bon(i), vide = reponses[i] === null;
+    if(!juste) nFaux++;
+    if(vide) nVide++;
+
+    const d = document.createElement("div");
+    d.className = "rev " + (juste ? "bon" : "faux");
+    d.dataset.etat = juste ? "bon" : (vide ? "vide" : "faux");
+    d.innerHTML =
+      '<div class="rev-tete">'
+      +   '<span class="rev-n">' + (i+1) + '</span>'
+      +   '<span class="rev-marque">' + (juste ? "✓" : "✕") + '</span>'
+      +   '<span class="rev-titre"></span>'
+      +   '<span class="rev-reps">' + (vide ? "—" : LETTRES[reponses[i]])
+      +     " → " + LETTRES[q.reponse] + '</span>'
+      + '</div><div class="rev-corps cache"></div>';
+    d.querySelector(".rev-titre").textContent = q.titre || "";
+    const corps = d.querySelector(".rev-corps");
+
+    if(aDesTextes(q)){
+      const t = document.createElement("div");
+      t.innerHTML = '<div class="bloc-t">Propositions</div>';
+      const box = document.createElement("div");
+      box.className = "rev-opts";
+      q.options.forEach((_, k) => {
+        const o = document.createElement("div");
+        o.className = "rev-opt"
+          + (k === q.reponse ? " correcte" : (k === reponses[i] ? " mienne" : ""));
+        o.innerHTML = '<span class="l">' + LETTRES[k] + '.</span>';
+        const s = document.createElement("span");
+        s.textContent = texteOption(q, k);
+        o.appendChild(s);
+        box.appendChild(o);
+      });
+      t.appendChild(box);
+      corps.appendChild(t);
+    }
+
+    if(q.transcription && q.transcription.length)
+      corps.appendChild(bloc("Transcription", q.transcription.join("\n")));
+    if(q.memo)
+      corps.appendChild(bloc("Indice de la réponse", "« " + q.memo + " »"));
+
+    const pistes = [["Original", q.audio], ["Amélioré", q.audioAmeliore]]
+                   .filter(x => x[1]);
+    if(pistes.length){
+      const t = document.createElement("div");
+      t.innerHTML = '<div class="bloc-t">Réécouter</div>';
+      pistes.forEach(([nom, rel]) => {
+        const l = document.createElement("div");
+        l.className = "rev-audio";
+        l.innerHTML = '<span class="etiq">' + nom + '</span>';
+        const a = document.createElement("audio");
+        a.controls = true; a.preload = "none"; a.src = BASE + rel;
+        l.appendChild(a);
+        t.appendChild(l);
+      });
+      corps.appendChild(t);
+    }
+
+    if(q.motsCles && q.motsCles.length){
+      const t = document.createElement("div");
+      t.innerHTML = '<div class="bloc-t">Mots-clés</div>';
+      const box = document.createElement("div");
+      box.className = "mots";
+      q.motsCles.forEach(m => {
+        const s = document.createElement("span");
+        s.className = "mot"; s.textContent = m;
+        box.appendChild(s);
+      });
+      t.appendChild(box);
+      corps.appendChild(t);
+    }
+
+    d.querySelector(".rev-tete").addEventListener("click", () => {
+      corps.classList.toggle("cache");
+    });
+    revue.appendChild(d);
+  });
+
+  $("#n-tout").textContent = questions.length;
+  $("#n-faux").textContent = nFaux;
+  $("#n-vide").textContent = nVide;
+  filtrer("faux");
+}
+
+function bloc(titre, texte){
+  const t = document.createElement("div");
+  t.innerHTML = '<div class="bloc-t">' + titre + '</div>';
+  const p = document.createElement("div");
+  p.className = "trans";
+  p.textContent = texte;
+  t.appendChild(p);
+  return t;
+}
+
+document.querySelectorAll("[data-filtre]").forEach(b => {
+  b.addEventListener("click", () => filtrer(b.dataset.filtre));
+});
+function filtrer(f){
+  document.querySelectorAll("[data-filtre]").forEach(b => {
+    b.className = "btn mini" + (b.dataset.filtre === f ? "" : " secondaire");
+  });
+  document.querySelectorAll(".rev").forEach(d => {
+    const e = d.dataset.etat;
+    const ok = f === "tout" || (f === "faux" && e !== "bon")
+            || (f === "vide" && e === "vide");
+    d.style.display = ok ? "" : "none";
+    if(!ok) d.querySelector(".rev-corps").classList.add("cache");
+  });
+}
+
+/* ============================================================ archivage */
+function sauver(score){
+  // Heure locale, pas UTC : toISOString() décalerait l'historique de plusieurs
+  // heures et les simulations du soir apparaîtraient le lendemain.
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const fiche = {
+    date: d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate())
+          + " " + p(d.getHours()) + ":" + p(d.getMinutes()),
+    source: TEST_FIXE || "banque",
+    score: score,
+    total: questions.length,
+    duree: Math.round((Date.now() - debutMs) / 1000),
+    piste: piste,
+    rythme: rythme,
+    questions: questions.map((q, i) => ({
+      id: q.id, niveau: q.niveau, titre: q.titre,
+      choix: reponses[i], reponse: q.reponse,
+      juste: reponses[i] !== null && reponses[i] === q.reponse,
+    })),
+  };
+
+  // Une simulation abandonnée à la première seconde ne vaut pas la peine d'être
+  // archivée : sans ça, elle brûlerait 39 questions sans que tu les aies
+  // vraiment écoutées.
+  if(reponses.every(r => r === null)){
+    $("#res-sauve").innerHTML =
+      '<div class="score-note">Aucune réponse donnée : rien n\'a été archivé, '
+      + 'les questions restent dans la banque.</div>';
+    return;
+  }
+
+  // Toujours une copie locale : si le serveur tombe, rien n'est perdu.
+  fiche.cle = Date.now();
+  try {
+    const h = JSON.parse(localStorage.getItem("tcf_historique") || "[]");
+    h.push(fiche);
+    localStorage.setItem("tcf_historique", JSON.stringify(h.slice(-200)));
+    const v = JSON.parse(localStorage.getItem("tcf_vues") || "{}");
+    fiche.questions.forEach(r => {
+      const e = v[r.id] = v[r.id] || {fois:0, juste:0};
+      e.fois++; if(r.juste) e.juste++;
+    });
+    localStorage.setItem("tcf_vues", JSON.stringify(v));
+  } catch(e){ /* navigateur sans stockage : tant pis */ }
+
+  fetch("/co/enregistrer", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(fiche),
+  }).then(r => r.json()).then(d => {
+    if(d.ok){ serveurOk = true; archiveCourante = d.fichier; montrerArchive(); }
+    else $("#res-sauve").innerHTML =
+      '<div class="avis">' + (d.message || "Enregistrement refusé.") + '</div>';
+  }).catch(() => {
+    serveurOk = false;
+    archiveCourante = fiche.cle;
+    montrerArchive(true);
+  });
+}
+
+/** Ligne « archivé ici » + le lien pour tout annuler. */
+function montrerArchive(local){
+  const box = $("#res-sauve");
+  box.innerHTML = (local
+      ? '<div class="avis">Serveur non détecté : gardé dans ce navigateur '
+        + 'seulement. Lance <code>python3 serveur_eval.py</code> pour archiver '
+        + 'dans un fichier.</div>'
+      : '<div class="score-note">Archivé dans mes_simulations_co/'
+        + archiveCourante + '</div>')
+    + '<div class="score-note" style="margin-top:6px">'
+    + '<span class="lien danger" id="lien-jeter">Supprimer et rendre les '
+    + questions.length + ' questions à la banque</span></div>';
+
+  $("#lien-jeter").addEventListener("click", () => {
+    if(!confirm("Supprimer cette simulation ?\n\nSes " + questions.length
+                + " questions redeviendront disponibles, comme si tu ne les "
+                + "avais jamais entendues."))
+      return;
+    supprimerFiche(archiveCourante).then(ok => {
+      $("#res-sauve").innerHTML = ok
+        ? '<div class="score-note">Simulation supprimée : les '
+          + questions.length + ' questions sont rendues à la banque.</div>'
+        : '<div class="avis">Suppression impossible.</div>';
+    });
+  });
+}
+
+})();
+</script>
+</body>
+</html>

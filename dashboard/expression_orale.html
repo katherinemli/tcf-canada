@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes simulations d'expression orale</title>
+<link rel="stylesheet" href="style_commun.css">
+<style>
+  .sous-t{color:var(--gris);font-size:14px;margin:0 0 4px}
+  .resume{font-size:13px;color:var(--gris);margin-bottom:16px}
+  .sujet{border:1px solid var(--bord);border-radius:11px;padding:15px 17px;
+    margin-bottom:11px;background:#fff}
+  .sujet-tete{display:flex;align-items:center;gap:10px;font-size:12px;
+    color:var(--gris);margin-bottom:8px}
+  .sujet-n{font-weight:700;color:var(--bleu);font-size:13px}
+  .q{font-size:14px;margin-top:7px;line-height:1.45}
+  .q .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--gris-clair);display:block;margin-bottom:2px}
+  .etat{font-size:12.5px;font-weight:600;margin-top:11px}
+  .etat.faite{color:var(--vert)}
+  .etat.partielle{color:#b45309}
+  .audios{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .audio{font-size:12px;background:#f1f5f9;border:1px solid var(--bord);
+    border-radius:999px;padding:4px 10px;color:var(--gris)}
+  .audio.court{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+  .devine{color:var(--gris-clair);cursor:help}
+  .vide{color:var(--gris-clair);font-size:14px;padding:6px 0}
+  .avis{background:#fffbeb;border:1px solid #fde68a;color:#92400e;
+    padding:11px 14px;border-radius:9px;font-size:13px;margin-top:14px}
+  .comment{font-size:12.5px;color:var(--gris-clair);margin-top:18px;line-height:1.6}
+  .comment b{color:var(--gris)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="entete">
+    <a href="/">← Accueil</a>
+    <span class="titre">Expression orale</span>
+  </div>
+
+  <div class="carte">
+    <h1>Ce que j'ai enregistré</h1>
+    <p class="sous-t">C'est le téléphone qui tire les questions et qui garde tout.
+      Cet écran ne fait que montrer ce qu'il m'a envoyé.</p>
+    <div class="resume" id="resume">Chargement…</div>
+    <div id="liste"></div>
+    <div class="comment">
+      <b>Comment ça marche :</b> sur le téléphone, <b>🎲 Tirer une question</b> —
+      il en a 264 en mémoire et ne redonne jamais la même. Il l'affiche pendant
+      les tâches 2 et 3, il chronomètre, il enregistre. Tout est gardé dans
+      <b>TCF_oral/</b>, question comprise, même sans WiFi.<br>
+      Quand tu veux les voir ici : allume le point d'accès, appuie sur
+      <b>📤 Envoyer au PC</b>, et recharge cette page.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+
+// Les durées attendues : c'est ce qui permet de voir qu'une tâche a été coupée.
+const ATTENDU = {1:120, 2:210, 3:270};
+
+fetch("/oral/registre")
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(d => rendre(d.enregistrements || []))
+  .catch(() => {
+    $("#resume").textContent = "";
+    $("#liste").innerHTML =
+      '<div class="avis">Serveur non joignable. Lance '
+      + '<code>python3 serveur_eval.py</code> puis recharge.</div>';
+  });
+
+function mmss(s){
+  if(!s) return "";
+  return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+}
+function echap(s){
+  const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML;
+}
+
+/* Fait ou pas ? Trois tâches reçues = faite. Le PC ne devine pas : il compte
+   ce que le téléphone lui a envoyé. */
+function etat(taches){
+  if(taches.size >= 3) return {cls:"faite", txt:"✅ Faite — les 3 tâches"};
+  const manque = [1,2,3].filter(t => !taches.has(t));
+  return {cls:"partielle",
+          txt:"◐ Commencée — il manque la tâche " + manque.join(" et ")};
+}
+
+function rendre(liste){
+  // regroupe par question ; 0 = audios d'avant que le téléphone les étiquette
+  const groupes = new Map();
+  liste.forEach(e => {
+    const k = e.sujet || 0;
+    if(!groupes.has(k)) groupes.set(k, {n:k, t2:"", t3:"", audios:[]});
+    const g = groupes.get(k);
+    if(e.t2 && !g.t2) g.t2 = e.t2;
+    if(e.t3 && !g.t3) g.t3 = e.t3;
+    g.audios.push(e);
+  });
+
+  const sujets = [...groupes.values()].filter(g => g.n)
+                   .sort((a,b) => b.n - a.n);
+  const orphelins = groupes.get(0);
+
+  const faites = sujets.filter(g =>
+    new Set(g.audios.map(a => a.tache)).size >= 3).length;
+  $("#resume").textContent = sujets.length
+    ? sujets.length + " question" + (sujets.length>1?"s":"") + " travaillée"
+      + (sujets.length>1?"s":"") + " · " + faites + " complète"
+      + (faites>1?"s":"") + " · " + liste.length + " enregistrements"
+    : "";
+
+  const box = $("#liste");
+  box.innerHTML = "";
+  if(!sujets.length && !orphelins){
+    box.innerHTML = '<div class="vide">Rien encore. Tire une question sur le '
+      + 'téléphone, enregistre-toi, puis envoie-les ici.</div>';
+    return;
+  }
+
+  sujets.forEach(g => {
+    g.audios.sort((a,b) => (a.tache||0) - (b.tache||0));
+    const taches = new Set(g.audios.map(a => a.tache).filter(Boolean));
+    const e = etat(taches);
+    const quand = (g.audios.map(a => a.quand).sort()[0] || "");
+
+    const d = document.createElement("div");
+    d.className = "sujet";
+    d.innerHTML =
+      '<div class="sujet-tete"><span class="sujet-n">#' + g.n + '</span>'
+      + '<span>' + echap(quand) + '</span></div>'
+      + (g.t3 ? '<div class="q"><span class="lbl">🗣 Tâche 3 · argumentation</span>'
+                + echap(g.t3) + '</div>' : "")
+      + (g.t2 ? '<div class="q"><span class="lbl">💬 Tâche 2 · interaction</span>'
+                + echap(g.t2) + '</div>' : "")
+      + (!g.t2 && !g.t3
+         ? '<div class="q" style="color:var(--gris-clair)">Question inconnue — '
+           + 'enregistrée avant que le téléphone la garde.</div>' : "")
+      + '<div class="etat ' + e.cls + '">' + e.txt + '</div>'
+      + audios(g.audios);
+    box.appendChild(d);
+  });
+
+  if(orphelins){
+    const d = document.createElement("div");
+    d.className = "sujet";
+    d.innerHTML =
+      '<div class="sujet-tete"><span class="sujet-n">—</span>'
+      + '<span>avant le carnet</span></div>'
+      + '<div class="q" style="color:var(--gris-clair)">'
+      + orphelins.audios.length + ' enregistrement'
+      + (orphelins.audios.length>1?'s':'') + ' d\'avant que le téléphone note '
+      + 'la question. Impossible de savoir laquelle c\'était.</div>'
+      + audios(orphelins.audios);
+    box.appendChild(d);
+  }
+}
+
+function audios(liste){
+  return '<div class="audios">' + liste.map(a => {
+    const attendu = ATTENDU[a.tache] || 0;
+    // 10 s de marge : en dessous, la tâche a visiblement été coupée
+    const court = attendu && a.duree && a.duree < attendu - 10;
+    const dev = a.source === "déduit"
+      ? ' <span class="devine" title="Retrouvé d\'après l\'heure">≈</span>' : "";
+    return '<span class="audio' + (court ? ' court' : '') + '">🎙 '
+      + (a.tache ? "Tâche " + a.tache : echap(a.nom))
+      + (a.duree ? " · " + mmss(a.duree) : "")
+      + (court ? " (coupée)" : "")
+      + (a.quand ? " · " + echap(a.quand.slice(11)) : "")
+      + dev + '</span>';
+  }).join("") + '</div>';
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+/* ================================================================
+   Style commun aux outils TCF de Katherine (accueil, oral, prompt EO).
+   Le simulateur d'expression écrite (index.html, Vue) garde le sien.
+   ================================================================ */
+:root{
+  --bleu:#2563eb; --bleu-clair:#eff6ff; --bleu-bord:#bfdbfe;
+  --texte:#111827; --gris:#6b7280; --gris-clair:#9ca3af;
+  --bord:#e5e7eb; --fond:#f8fafc; --carte:#ffffff;
+  --vert:#059669; --vert-fond:#ecfdf5; --vert-bord:#a7f3d0;
+  --rouge:#dc2626; --ambre:#d97706;
+  --violet:#7c3aed; --violet-clair:#f5f3ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--fond); color:var(--texte);
+  padding:16px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:820px;margin:0 auto}
+.cache{display:none !important}
+
+.entete{display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;margin-bottom:14px}
+.entete a{color:var(--bleu);text-decoration:none;cursor:pointer}
+.entete a:hover{text-decoration:underline}
+.entete .titre{color:var(--texte);font-weight:500}
+
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:12px;
+  padding:26px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.carte + .carte{margin-top:16px}
+
+h1{font-size:24px;font-weight:600;margin-bottom:6px}
+.sous{color:var(--gris);font-size:14px;margin-bottom:22px}
+
+.btn{background:var(--bleu);color:#fff;border:none;border-radius:9px;
+  padding:12px 22px;font-size:15px;font-weight:500;font-family:inherit;cursor:pointer}
+.btn:hover{background:#1d4ed8}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.secondaire{background:#fff;color:var(--texte);border:1px solid var(--bord)}
+.btn.secondaire:hover{background:#f9fafb}
+.btn.mini{padding:7px 13px;font-size:13px}
+
+label{display:block;color:var(--gris);font-size:12px;text-transform:uppercase;
+  letter-spacing:.03em;margin-bottom:6px}
+select,input[type=text],textarea{font-family:inherit;font-size:14px;padding:9px 11px;
+  border:1px solid var(--bord);border-radius:8px;background:#fff;color:var(--texte);
+  width:100%}
+textarea{resize:vertical;line-height:1.5}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--bleu-bord);
+  outline-offset:-1px;border-color:var(--bleu)}

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chrono TCF — Expression orale</title>
+<style>
+  :root{
+    --bg:#0d0f14; --card:#171b24; --txt:#f2f4f8; --dim:#8b93a7;
+    --t1:#4fd1c5; --t2:#f6ad55; --t3:#f56565; --ok:#68d391;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+    user-select:none;
+  }
+  h1{font-size:19px; font-weight:700; margin:4px 0 2px; text-align:center}
+  .sous{color:var(--dim); font-size:13px; margin:0 0 18px; text-align:center}
+
+  .taches{width:100%; max-width:460px; display:flex; flex-direction:column; gap:12px}
+  .tache{
+    display:flex; align-items:center; gap:14px; width:100%;
+    background:var(--card); border:0; border-left:6px solid var(--c);
+    border-radius:14px; padding:16px 18px; color:var(--txt);
+    font:inherit; text-align:left; cursor:pointer;
+  }
+  .tache:active{transform:scale(.985)}
+  .tache .num{font-size:30px; font-weight:800; color:var(--c); min-width:34px}
+  .tache .nom{font-size:16px; font-weight:600}
+  .tache .det{font-size:13px; color:var(--dim); margin-top:2px}
+
+  .opts{display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; justify-content:center}
+  .opt{
+    background:var(--card); border:1px solid #2a3040; color:var(--dim);
+    border-radius:999px; padding:9px 16px; font-size:14px; font:inherit;
+    font-size:14px; cursor:pointer;
+  }
+  .opt.on{color:var(--txt); border-color:var(--ok); background:#18241c}
+  .note{color:var(--dim); font-size:12px; margin-top:20px; text-align:center; max-width:380px; line-height:1.5}
+
+  /* ---- écran chrono ---- */
+  #chrono{display:none; flex-direction:column; align-items:center; width:100%; flex:1; justify-content:center}
+  .phase{font-size:16px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:6px}
+  .titre{font-size:15px; color:var(--dim); margin-bottom:14px}
+  .anneau{position:relative; width:min(78vw,300px); aspect-ratio:1}
+  .anneau svg{width:100%; height:100%; transform:rotate(-90deg)}
+  .anneau circle{fill:none; stroke-width:14; stroke-linecap:round}
+  .piste{stroke:#222836}
+  .jauge{stroke:var(--c); transition:stroke .3s}
+  .temps{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+  }
+  .temps b{font-size:clamp(48px,17vw,78px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1}
+  .temps span{font-size:13px; color:var(--dim); margin-top:6px}
+  .boutons{display:flex; gap:12px; margin-top:30px; flex-wrap:wrap; justify-content:center}
+  .btn{
+    background:var(--card); border:1px solid #2a3040; color:var(--txt);
+    border-radius:999px; padding:14px 26px; font:inherit; font-size:16px; font-weight:600; cursor:pointer;
+  }
+  .btn.gros{background:#2b1b1e; border-color:#5a2b31}
+  .btn.vert{background:#18241c; border-color:#2f5a3a}
+
+  #fini{display:none; flex-direction:column; align-items:center; justify-content:center; flex:1; text-align:center}
+  #fini .gros{font-size:56px; margin-bottom:8px}
+  #fini h2{margin:0 0 6px; font-size:22px}
+</style>
+</head>
+<body>
+
+<!-- ================= ACCUEIL ================= -->
+<div id="accueil" style="width:100%;display:flex;flex-direction:column;align-items:center">
+  <h1>🎙️ Chrono TCF — Expression orale</h1>
+  <p class="sous">Je choisis la tâche, je pose le téléphone, je parle.<br>Les bips me disent tout : je ne regarde plus l'heure.</p>
+
+  <div class="taches" id="liste"></div>
+
+  <div class="opts">
+    <button class="opt on" id="optSon">🔊 Son</button>
+    <button class="opt" id="optVol">Volume : moyen</button>
+    <button class="opt on" id="optVib">📳 Vibration</button>
+  </div>
+
+  <p class="note">
+    <b>Mes écouteurs filaires dans le Honor 9</b> (prise jack) : les bips vont
+    dans mon oreille et <b>pas</b> dans l'enregistrement. Des écouteurs
+    <b>sans micro</b>, sinon c'est eux qui enregistrent à la place du téléphone.
+    <br><br>
+    Sans écouteurs : volume « doux », les bips resteront dans l'audio — ça
+    marque les débuts et les fins, ce n'est pas grave.
+    <br><br>
+    Écran en veille sur <b>10 minutes</b> (Paramètres → Affichage). Et le
+    dictaphone doit avoir le droit de tourner en arrière-plan : Paramètres →
+    Batterie → Lancement d'applications → mon dictaphone → <b>gérer
+    manuellement</b>, tout autorisé. Sinon EMUI le tue au milieu de la tâche.
+  </p>
+</div>
+
+<!-- ================= CHRONO ================= -->
+<div id="chrono">
+  <div class="phase" id="phase">Je parle</div>
+  <div class="titre" id="titre"></div>
+  <div class="anneau" id="anneau">
+    <svg viewBox="0 0 320 320">
+      <circle class="piste" cx="160" cy="160" r="142"></circle>
+      <circle class="jauge" id="jauge" cx="160" cy="160" r="142"></circle>
+    </svg>
+    <div class="temps"><b id="mmss">0:00</b><span id="etape"></span></div>
+  </div>
+  <div class="boutons">
+    <button class="btn gros" id="btnStop">■ Arrêter</button>
+  </div>
+</div>
+
+<!-- ================= FINI ================= -->
+<div id="fini">
+  <div class="gros">✅</div>
+  <h2 id="finiTitre">Terminé</h2>
+  <p class="sous" id="finiDetail"></p>
+  <div class="boutons">
+    <button class="btn" id="btnRefaire">↻ Refaire</button>
+    <button class="btn vert" id="btnSuivante">Tâche suivante ▶</button>
+    <button class="btn" id="btnAccueil">Accueil</button>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   Les 3 tâches du TCF Canada — expression orale (12 min au total).
+   Pour changer un temps : c'est ici, en secondes. Rien d'autre à toucher.
+------------------------------------------------------------------- */
+const TACHES = [
+  { num:1, nom:"Présentation personnelle", prep:0,   duree:120, couleur:"var(--t1)" },
+  { num:2, nom:"Interaction (je pose les questions)", prep:120, duree:210, couleur:"var(--t2)" },
+  { num:3, nom:"Argumentation (mon point de vue)",    prep:0,   duree:270, couleur:"var(--t3)" },
+];
+
+const $ = id => document.getElementById(id);
+const mmss = s => {
+  const n = Math.max(0, Math.ceil(s - 1e-6));            // 59,7 s → « 1:00 », jamais « 0:00 »
+  return Math.floor(n/60) + ":" + String(n%60).padStart(2,"0");
+};
+
+let son = true, vib = true;
+$("optSon").onclick = () => { son = !son; $("optSon").classList.toggle("on", son); };
+$("optVib").onclick = () => { vib = !vib; $("optVib").classList.toggle("on", vib); };
+
+/* volume des bips : doux si j'enregistre sans écouteurs */
+const VOLUMES = [["doux", .3], ["moyen", 1], ["fort", 1.7]];
+let niveau = 1;
+$("optVol").onclick = () => {
+  niveau = (niveau + 1) % VOLUMES.length;
+  $("optVol").textContent = "Volume : " + VOLUMES[niveau][0];
+  $("optVol").classList.toggle("on", niveau !== 0);
+};
+
+/* ---- accueil : les 3 boutons ---- */
+TACHES.forEach((t, i) => {
+  const b = document.createElement("button");
+  b.className = "tache";
+  b.style.setProperty("--c", t.couleur);
+  b.innerHTML = `<div class="num">${t.num}</div>
+    <div><div class="nom">${t.nom}</div>
+    <div class="det">${t.prep ? mmss(t.prep)+" de préparation, puis " : ""}${mmss(t.duree)} de parole</div></div>`;
+  b.onclick = () => demarrer(i);
+  $("liste").appendChild(b);
+});
+
+/* ------------------------------------------------------------------
+   Le son. Astuce importante : TOUS les bips sont programmés d'avance
+   dans la carte son (Web Audio). Même si Android met la page en pause
+   ou éteint l'écran, ils sonnent quand même, à la seconde près.
+------------------------------------------------------------------- */
+let ctx = null, veilleur = null;
+
+function bip(t, freq, duree, volume) {
+  if (!son) return;
+  volume = Math.min(0.9, volume * VOLUMES[niveau][1]);
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = "sine"; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(volume, t + 0.012);
+  g.gain.setValueAtTime(volume, t + duree - 0.05);
+  g.gain.linearRampToValueAtTime(0, t + duree);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + duree + 0.05);
+}
+
+/* garde la carte son réveillée pendant toute la tâche (inaudible) */
+function reveiller() {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.value = 30; g.gain.value = 0.0009;
+  o.connect(g).connect(ctx.destination); o.start();
+  return o;
+}
+
+let minuteries = [];
+function vibrer(dansCombienDeSecondes, motif) {
+  if (!vib || !navigator.vibrate) return;
+  minuteries.push(setTimeout(() => { try { navigator.vibrate(motif); } catch(e){} },
+                             dansCombienDeSecondes * 1000));
+}
+
+/* ------------------------------------------------------------------
+   Le déroulé d'une tâche
+------------------------------------------------------------------- */
+let etat = null, boucle = null;
+
+function demarrer(index) {
+  const t = TACHES[index];
+
+  if (ctx) { try { ctx.close(); } catch(e){} }
+  clearTimeouts();
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") ctx.resume();
+  veilleur = reveiller();
+  garderEcranAllume();
+
+  /* les étapes, l'une après l'autre */
+  const etapes = [];
+  if (t.prep) etapes.push({ nom:"Préparation", libelle:"je prépare", duree:t.prep });
+  etapes.push({ nom:"Je parle", libelle:"je parle", duree:t.duree });
+
+  const T0 = ctx.currentTime + 0.35;   // origine commune : son + affichage
+  let d = 0;
+  etapes.forEach((e, i) => {
+    e.debut = d; e.fin = d + e.duree;
+
+    if (i === 0 && e.nom === "Préparation") {
+      bip(T0 + e.debut, 520, 0.18, .35);                       // départ prépa
+      vibrer(e.debut, 200);
+    } else {
+      bip(T0 + e.debut,       880, 0.16, .5);                  // GO : deux bips clairs
+      bip(T0 + e.debut + 0.24, 880, 0.16, .5);
+      vibrer(e.debut, [180,120,180]);
+    }
+
+    if (e.duree >= 150) {                                      // reste 1 min
+      bip(T0 + e.fin - 60, 700, 0.18, .38);
+      vibrer(e.fin - 60, 250);
+    }
+    if (e.duree >= 60) {                                       // reste 30 s
+      bip(T0 + e.fin - 30, 700, 0.16, .4);
+      bip(T0 + e.fin - 29.75, 700, 0.16, .4);
+      vibrer(e.fin - 30, [150,100,150]);
+    }
+    for (let s = 5; s >= 1; s--)                               // 5 derniers tics
+      bip(T0 + e.fin - s, 1150, 0.06, .22);
+
+    if (i < etapes.length - 1) {                               // fin de la prépa
+      bip(T0 + e.fin - 0.0, 440, 0.45, .45);
+    } else {                                                   // fin de la tâche
+      bip(T0 + e.fin,       440, 0.55, .55);
+      bip(T0 + e.fin + 0.7, 330, 0.85, .55);
+      vibrer(e.fin, [400,150,400,150,600]);
+    }
+    d = e.fin;
+  });
+
+  etat = { t, etapes, T0, total:d, index };
+  $("accueil").style.display = "none";
+  $("fini").style.display = "none";
+  $("chrono").style.display = "flex";
+  $("titre").textContent = `Tâche ${t.num} — ${t.nom}`;
+  $("anneau").style.setProperty("--c", t.couleur);
+  afficher();
+  boucle = setInterval(afficher, 100);
+}
+
+function afficher() {
+  if (!etat) return;
+  const ecoule = ctx.currentTime - etat.T0;
+
+  if (ecoule >= etat.total) { terminer(); return; }
+
+  const e = etat.etapes.find(x => ecoule < x.fin) || etat.etapes[etat.etapes.length-1];
+  const restePhase = Math.max(0, e.fin - ecoule);
+  const part = ecoule < 0 ? 0 : (ecoule - e.debut) / e.duree;
+
+  $("phase").textContent = e.nom;
+  $("mmss").textContent = mmss(restePhase);
+  $("etape").textContent = etat.etapes.length > 1
+    ? `${e.libelle} · ${mmss(e.duree)} en tout` : `${mmss(e.duree)} en tout`;
+
+  const C = 2 * Math.PI * 142;
+  $("jauge").style.strokeDasharray = C;
+  $("jauge").style.strokeDashoffset = C * Math.min(1, Math.max(0, part));
+  $("jauge").style.stroke = restePhase <= 30 ? "var(--t3)" : etat.t.couleur;
+}
+
+function terminer() {
+  const t = etat.t, index = etat.index;
+  arreterTout();
+  $("chrono").style.display = "none";
+  $("fini").style.display = "flex";
+  $("finiTitre").textContent = `Tâche ${t.num} terminée`;
+  $("finiDetail").textContent = `${t.nom} — ${mmss(t.duree)} de parole.`;
+  $("btnRefaire").onclick   = () => demarrer(index);
+  $("btnSuivante").style.display = index < TACHES.length - 1 ? "" : "none";
+  $("btnSuivante").onclick  = () => demarrer(index + 1);
+}
+
+function arreterTout() {
+  clearInterval(boucle); boucle = null;
+  clearTimeouts();
+  if (navigator.vibrate) { try { navigator.vibrate(0); } catch(e){} }
+  if (ctx) { try { ctx.close(); } catch(e){} ctx = null; }
+  libererEcran();
+  etat = null;
+}
+function clearTimeouts(){ minuteries.forEach(clearTimeout); minuteries = []; }
+
+$("btnStop").onclick = () => { arreterTout(); accueil(); };
+$("btnAccueil").onclick = () => { arreterTout(); accueil(); };
+function accueil(){
+  $("chrono").style.display = "none";
+  $("fini").style.display = "none";
+  $("accueil").style.display = "flex";
+}
+
+/* écran allumé quand le navigateur le permet (https / localhost) */
+let verrou = null;
+async function garderEcranAllume(){
+  try { if (navigator.wakeLock) verrou = await navigator.wakeLock.request("screen"); } catch(e){}
+}
+function libererEcran(){ try { verrou && verrou.release(); } catch(e){} verrou = null; }
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    if (etat) { garderEcranAllume(); afficher(); }
+  }
+});
+</script>
+</body>
+</html>

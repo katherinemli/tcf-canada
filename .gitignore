@@ -1,0 +1,36 @@
+# ─── Environnements & caches Python ───────────────────────────────
+.venv-whisper/
+.venv/
+__pycache__/
+*.py[cod]
+
+# ─── Données personnelles (NE JAMAIS PUBLIER) ─────────────────────
+dashboard/mes_reponses/
+dashboard/mes_simulations_co/
+dashboard/mes_simulation_expression_oral/
+dashboard/mes_audios/
+dashboard/tests/
+
+# ─── Contenu de tiers : audio & images scrapés (~1,3 Go) ──────────
+dashboard/banque/audio/
+dashboard/banque/audio_ameliore/
+dashboard/banque/_cache/
+dashboard/banque/images/
+dashboard/banque/questions_O.json
+*.log
+
+# ─── Clé de signature de l'APK (SECRET — jamais sur GitHub) ───────
+app-mobile/cle.keystore
+*.keystore
+*.jks
+
+# ─── Artéfacts de compilation Android ─────────────────────────────
+app-mobile/build/
+*.apk
+*.idsig
+*.dex
+
+# ─── Divers ───────────────────────────────────────────────────────
+dashboard/site/.git-ancien-sauvegarde/
+.DS_Store
+*.swp
