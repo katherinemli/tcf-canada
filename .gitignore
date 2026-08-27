@@ -11,13 +11,19 @@ dashboard/mes_simulation_expression_oral/
 dashboard/mes_audios/
 dashboard/tests/
 
-# ─── Contenu de tiers : audio & images scrapés (~1,3 Go) ──────────
-dashboard/banque/audio/
-dashboard/banque/audio_ameliore/
-dashboard/banque/_cache/
-dashboard/banque/images/
-dashboard/banque/questions_O.json
+# ─── Contenu de tiers : la banque et les sujets ───────────────────
+# Seul le dossier banque/exemple/ est publié (1 question + 1 audio + 1 image).
+dashboard/banque/*
+!dashboard/banque/exemple/
+dashboard/questions.js
+dashboard/questions_oral.js
+dashboard/sujets_oraux.json
 *.log
+
+# … mais on garde bien les fichiers d'exemple :
+!dashboard/questions.exemple.js
+!dashboard/questions_oral.exemple.js
+!dashboard/sujets_oraux.exemple.json
 
 # ─── Clé de signature de l'APK (SECRET — jamais sur GitHub) ───────
 app-mobile/cle.keystore
@@ -34,3 +40,7 @@ app-mobile/build/
 dashboard/site/.git-ancien-sauvegarde/
 .DS_Store
 *.swp
+
+# Les 60 sujets en dur dans l'appli : seul l'exemple est publié.
+app-mobile/src/com/katherine/tcforal/Sujets.java
+!app-mobile/src/com/katherine/tcforal/Sujets.exemple.java

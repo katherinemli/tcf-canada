@@ -1,0 +1,83 @@
+{
+ "type": "O",
+ "total": 1,
+ "_note": "UN SEUL exemple, pour montrer le format produit par construire_banque.py. La banque complete (991 questions + ~1,3 Go d'audio) reste en local : ce sont des contenus appartenant a des sites tiers.",
+ "questions": [
+  {
+   "id": 40,
+   "titre": "Inviter quelqu'un à s'asseoir",
+   "consigne": "Écoutez les 4 propositions, choisissez celle qui correspond à l’image",
+   "niveau": 1,
+   "options": [
+    "A. ",
+    "B. ",
+    "C. ",
+    "D. "
+   ],
+   "reponse": 1,
+   "transcription": [
+    "A. Allez-y, entrez. B. Asseyez-vous, je vous en prie. C. Fermez la porte, s'il vous plaît. D. Merci pour ce café."
+   ],
+   "segments": [
+    {
+     "end": 0.7,
+     "text": "A.",
+     "start": 0.3
+    },
+    {
+     "end": 3.1,
+     "text": "Allez-y, entrez.",
+     "start": 1.8
+    },
+    {
+     "end": 6,
+     "text": "B.",
+     "start": 5.7
+    },
+    {
+     "end": 8.5,
+     "text": "Asseyez-vous, je vous en prie.",
+     "start": 6.8
+    },
+    {
+     "end": 11.3,
+     "text": "C.",
+     "start": 10.9
+    },
+    {
+     "end": 13.5,
+     "text": "Fermez la porte, s'il vous plaît.",
+     "start": 12
+    },
+    {
+     "end": 16.3,
+     "text": "D.",
+     "start": 15.9
+    },
+    {
+     "end": 18.3,
+     "text": "Merci pour ce café.",
+     "start": 17.2
+    }
+   ],
+   "description": "Quelqu'un accueille un visiteur et lui propose de prendre place.",
+   "theme": "Vie quotidienne",
+   "motsCles": [
+    "Asseyez-vous",
+    "je vous en prie"
+   ],
+   "emoji": "🛋",
+   "memo": "Asseyez-vous je vous en prie",
+   "audio": "audio/40.mp3",
+   "audioAmeliore": "audio_ameliore/40.mp3",
+   "image": "images/40.webp",
+   "vuDans": [
+    "001-1-O#1",
+    "148-1-O#1",
+    "001-26-O#3"
+   ],
+   "duree": 23.9,
+   "charge": 0
+  }
+ ]
+}
